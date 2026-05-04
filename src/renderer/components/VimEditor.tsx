@@ -54,7 +54,9 @@ export default function VimEditor({
         fontSize: '14px'
       },
       '.cm-content': {
-        padding: '0',
+        // 2px left padding so the column-0 cursor (which has margin-left:-0.6px)
+        // isn't clipped by .cm-scroller's overflow.
+        padding: '0 0 0 2px',
         fontFamily: 'inherit',
         caretColor: 'var(--text)'
       },
