@@ -73,12 +73,13 @@ export function parseChronoLeading(input: string): { schedule: ParsedSchedule; t
   if (r.index !== 0) return null
   const due = toISODate(r.start.date())
   const time = r.start.isCertain('hour') ? toHHMM(r.start.date()) : undefined
+  const endTime = r.end && r.end.isCertain('hour') ? toHHMM(r.end.date()) : undefined
   const titleText = trimmed.slice(r.text.length).trim()
-  return { schedule: { kind: 'todo', due, time }, titleText }
+  return { schedule: { kind: 'todo', due, time, endTime }, titleText }
 }
 
 export type ParsedSchedule =
-  | { kind: 'todo'; due: string | null; time?: string }
+  | { kind: 'todo'; due: string | null; time?: string; endTime?: string }
   | { kind: 'recurring'; recurrence: Recurrence }
 
 interface SchedulePrefix {
@@ -124,15 +125,17 @@ function tryParseSchedulePrefix(tokens: string[]): SchedulePrefix | null {
   if (due !== undefined) {
     let consumed = 1
     let time: string | undefined
+    let endTime: string | undefined
     const next = tokens[consumed]
     if (next) {
       const tm = TIME_RE.exec(stripColon(next))
       if (tm) {
         time = pad2(tm[1])
+        if (tm[2]) endTime = pad2(tm[2])
         consumed += 1
       }
     }
-    return { schedule: { kind: 'todo', due, time }, consumedTokens: consumed }
+    return { schedule: { kind: 'todo', due, time, endTime }, consumedTokens: consumed }
   }
 
   return null
@@ -243,7 +246,12 @@ export function parseCapture(input: string): ParseResult | null {
     if (!r || !r.titleText) return null
     if (r.schedule.kind !== 'todo') return null
     return {
-      task: baseTask({ title: r.titleText, due: r.schedule.due, time: r.schedule.time }),
+      task: baseTask({
+        title: r.titleText,
+        due: r.schedule.due,
+        time: r.schedule.time,
+        endTime: r.schedule.endTime
+      }),
       prefix: 'chrono'
     }
   }
@@ -261,7 +269,12 @@ export function parseCapture(input: string): ParseResult | null {
       }
     }
     return {
-      task: baseTask({ title, due: prefix.schedule.due, time: prefix.schedule.time }),
+      task: baseTask({
+        title,
+        due: prefix.schedule.due,
+        time: prefix.schedule.time,
+        endTime: prefix.schedule.endTime
+      }),
       prefix: 'todo'
     }
   }
@@ -279,6 +292,7 @@ export function formatSchedule(p: ParsedSchedule | null): string {
   if (p.kind === 'todo') {
     const date = formatDuePreview(p.due)
     if (!p.time) return date
+    if (p.endTime) return `${date}, ${p.time}–${p.endTime}`
     return `${date}, ${p.time}`
   }
   const dayPart = formatDaysPreview(p.recurrence)
@@ -323,7 +337,9 @@ export function scheduleToInput(p: ParsedSchedule | null): string {
   if (p.kind === 'todo') {
     if (!p.due) return ''
     const datePart = scheduleDateToken(p.due)
-    return p.time ? `${datePart} ${p.time}` : datePart
+    if (!p.time) return datePart
+    const timePart = p.endTime ? `${p.time}-${p.endTime}` : p.time
+    return `${datePart} ${timePart}`
   }
   // recurring (used only when caller wants the full thing; Edit recurring uses parseTimeRange separately)
   const days = p.recurrence.daily ? 'daily' : (p.recurrence.days ?? []).map(d => DAY_SHORT[d][0]).join('')

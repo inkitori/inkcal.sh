@@ -45,7 +45,7 @@ function blocksForDate(tasks: Task[], completions: any[], date: string): BlockDa
   for (const t of tasks) {
     if (t.kind !== 'todo' || t.due !== date || !t.time) continue
     const s = t.time
-    const e = add30(s)
+    const e = t.endTime ?? add30(s)
     const isCompleted = completions.some((c: any) => c.taskId === t.id)
     out.push({ task: t, startMin: minutes(s), endMin: minutes(e), isCompleted, date })
   }

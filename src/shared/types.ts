@@ -25,6 +25,8 @@ export interface Task {
   due?: string | null
   /** 'HH:MM' optional time-of-day for one-off todos */
   time?: string
+  /** 'HH:MM' optional end-time for one-off todos (block of time) */
+  endTime?: string
   /** present only when kind='recurring' */
   recurrence?: Recurrence
   createdAt: string

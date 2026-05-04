@@ -113,10 +113,10 @@ function formatCapturePreview(r: ParseResult): string {
   }
   // chrono path: show "schedule · title" so the boundary chrono drew is visible
   if (r.prefix === 'chrono') {
-    const sched: ParsedSchedule = { kind: 'todo', due: t.due ?? null, time: t.time }
+    const sched: ParsedSchedule = { kind: 'todo', due: t.due ?? null, time: t.time, endTime: t.endTime }
     return `${formatSchedule(sched)} · ${t.title ?? ''}`
   }
   if (!t.due) return 'inbox'
-  const sched: ParsedSchedule = { kind: 'todo', due: t.due, time: t.time }
+  const sched: ParsedSchedule = { kind: 'todo', due: t.due, time: t.time, endTime: t.endTime }
   return formatSchedule(sched)
 }

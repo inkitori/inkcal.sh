@@ -40,7 +40,7 @@ export default function Edit() {
     setTitle(task.title ?? task.body ?? '')
     setError(null)
     if (task.kind === 'todo') {
-      setSchedule(scheduleToInput({ kind: 'todo', due: task.due ?? null, time: task.time }))
+      setSchedule(scheduleToInput({ kind: 'todo', due: task.due ?? null, time: task.time, endTime: task.endTime }))
     } else {
       setSchedule('')
     }
@@ -87,6 +87,7 @@ export default function Edit() {
       if (!sched) {
         patch.due = null
         patch.time = undefined
+        patch.endTime = undefined
       } else {
         const parsed = parseSchedule(sched)
         if (!parsed || parsed.kind !== 'todo') {
@@ -95,6 +96,7 @@ export default function Edit() {
         }
         patch.due = parsed.due
         patch.time = parsed.time
+        patch.endTime = parsed.endTime
       }
     }
     if (task.kind === 'recurring') {
@@ -132,7 +134,8 @@ export default function Edit() {
   function applyDateKeyword(keyword: 'today' | 'tomorrow') {
     const parsed = parseSchedule(schedule.trim())
     if (parsed?.kind === 'todo' && parsed.time) {
-      setSchedule(`${keyword} ${parsed.time}`)
+      const timePart = parsed.endTime ? `${parsed.time}-${parsed.endTime}` : parsed.time
+      setSchedule(`${keyword} ${timePart}`)
     } else {
       setSchedule(keyword)
     }

@@ -33,6 +33,8 @@ export default function TaskRow({
   }
 
   const time = task.time ?? task.recurrence?.start
+  const endTime = task.endTime ?? task.recurrence?.end
+  const timeLabel = time && endTime ? `${time}–${endTime}` : time
   const due = task.due
   const label = showDue && due ? dueLabel(due) : null
 
@@ -92,7 +94,7 @@ export default function TaskRow({
         </span>
       )}
       <span className="font-mono text-[10px] flex items-center gap-2 shrink-0" style={{ color: 'var(--muted)' }}>
-        {showTime && time && <span>@{time}</span>}
+        {showTime && time && <span>@{timeLabel}</span>}
         {recurrenceLabel && <span style={{ color: 'var(--muted-2)' }}>{recurrenceLabel}</span>}
         {label && (
           <span style={{ color: isOverdue ? 'var(--danger)' : 'var(--accent)' }}>{label}</span>
