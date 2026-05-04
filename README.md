@@ -1,6 +1,6 @@
 # inkcal.sh
 
-minimalist todo + calendar — vim-flavored, single JSON file, themeable.
+vim driven ez todo list
 
 ## run
 
@@ -41,7 +41,7 @@ a leading `!` routes the rest through [chrono](https://github.com/wanasit/chrono
 | ⌘1 / ⌘2 / ⌘3 | todo / calendar / notes         |
 | ⌘K       | capture                             |
 | ⌘P       | command palette                     |
-| /        | search (scoped to the current view) |
+| /        | search                              |
 | u        | undo last delete                    |
 | ⌥Space   | toggle window from anywhere         |
 | Esc      | close any open overlay              |
@@ -53,7 +53,7 @@ a leading `!` routes the rest through [chrono](https://github.com/wanasit/chrono
 | j / k     | move down / up               |
 | gg / G    | top / bottom                 |
 | space, x  | toggle done                  |
-| dd  /  ⌫  | delete (5s undo)             |
+| dd  /  ⌫  | delete                       |
 | o         | new todo for today           |
 | n         | new note (notes view)        |
 | i         | rename selected (inline)     |
