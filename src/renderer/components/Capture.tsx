@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { parseCapture } from '@/lib/parser'
+import ScheduleInput from './ScheduleInput'
 
 export default function Capture() {
   const open = useStore(s => s.captureOpen)
@@ -46,17 +47,17 @@ export default function Capture() {
         }}
       >
         <div className="px-4 py-3">
-          <input
+          <ScheduleInput
             ref={inputRef}
+            mode="capture"
             value={value}
-            onChange={(e) => { setValue(e.target.value); setError(null) }}
+            onChange={(v) => { setValue(v); setError(null) }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); submit() }
               if (e.key === 'Escape') { e.preventDefault(); close() }
             }}
-            placeholder="capture…  e.g. today: write report  /  mwf 10:00-11:00 lecture  /  daily 08:00 take meds"
-            className="w-full text-base"
-            style={{ color: 'var(--text)' }}
+            placeholder="capture…  e.g. today write report  /  mwf 10:00-11:00 lecture  /  daily 08:00 stretch"
+            inputClassName="w-full text-base bg-transparent outline-none"
           />
         </div>
         <div className="px-4 py-2 flex items-center gap-3 font-mono text-[10px] uppercase"

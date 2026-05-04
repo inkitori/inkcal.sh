@@ -17,8 +17,8 @@ today: write report                  todo due today
 fri: 331 hw3                          todo due next friday
 2026-05-12: pay rent                  todo on a specific date
 mwf 10:00-11:00 lecture               recurring (mon/wed/fri)
-daily 08:00 take meds                 recurring every day
-someday: pick up lexapro              inbox / no date
+daily 08:00 stretch                   recurring every day
+someday: read more books              inbox / no date
 note: random thought                  note
 write report                          bare → inbox
 ```

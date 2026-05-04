@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
-import { todayISO, addDays } from '@/lib/date'
 import { WEEKDAYS } from '@/../shared/types'
 import type { Recurrence, Task, Weekday } from '@/../shared/types'
+import {
+  parseSchedule,
+  parseTimeRange,
+  scheduleToInput,
+  timeRangeToInput
+} from '@/lib/parser'
+import ScheduleInput from './ScheduleInput'
 
 const DAY_LABEL: Record<Weekday, string> = {
   mon: 'm', tue: 't', wed: 'w', thu: 't', fri: 'f', sat: 's', sun: 's'
@@ -21,25 +27,32 @@ export default function Edit() {
   )
 
   const [title, setTitle] = useState('')
-  const [due, setDue] = useState<string>('')
-  const [time, setTime] = useState<string>('')
+  const [schedule, setSchedule] = useState<string>('')
+  const [timeRange, setTimeRange] = useState<string>('')
   const [days, setDays] = useState<Set<Weekday>>(new Set())
   const [daily, setDaily] = useState(false)
-  const [start, setStart] = useState<string>('')
-  const [end, setEnd] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const submitRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!open || !task) return
     setTitle(task.title ?? task.body ?? '')
-    setDue(task.due ?? '')
-    setTime(task.time ?? '')
-    const rec = task.recurrence ?? {}
-    setDays(new Set(rec.days ?? []))
-    setDaily(!!rec.daily)
-    setStart(rec.start ?? '')
-    setEnd(rec.end ?? '')
+    setError(null)
+    if (task.kind === 'todo') {
+      setSchedule(scheduleToInput({ kind: 'todo', due: task.due ?? null, time: task.time }))
+    } else {
+      setSchedule('')
+    }
+    if (task.kind === 'recurring') {
+      setTimeRange(timeRangeToInput(task.recurrence))
+      setDays(new Set(task.recurrence?.days ?? []))
+      setDaily(!!task.recurrence?.daily)
+    } else {
+      setTimeRange('')
+      setDays(new Set())
+      setDaily(false)
+    }
     requestAnimationFrame(() => titleRef.current?.focus())
   }, [open, task])
 
@@ -70,15 +83,34 @@ export default function Edit() {
       else patch.title = trimmed
     }
     if (task.kind === 'todo') {
-      patch.due = due ? due : null
-      patch.time = time.trim() || undefined
+      const sched = schedule.trim()
+      if (!sched) {
+        patch.due = null
+        patch.time = undefined
+      } else {
+        const parsed = parseSchedule(sched)
+        if (!parsed || parsed.kind !== 'todo') {
+          setError('couldn’t parse that')
+          return
+        }
+        patch.due = parsed.due
+        patch.time = parsed.time
+      }
     }
     if (task.kind === 'recurring') {
       const rec: Recurrence = {}
       if (daily) rec.daily = true
       else if (days.size > 0) rec.days = WEEKDAYS.filter(d => days.has(d))
-      if (start.trim()) rec.start = start.trim()
-      if (end.trim()) rec.end = end.trim()
+      const tr = timeRange.trim()
+      if (tr) {
+        const parsed = parseTimeRange(tr)
+        if (!parsed) {
+          setError('couldn’t parse time')
+          return
+        }
+        if (parsed.start) rec.start = parsed.start
+        if (parsed.end) rec.end = parsed.end
+      }
       patch.recurrence = rec
     }
     updateTask(task.id, patch)
@@ -95,6 +127,16 @@ export default function Edit() {
       return next
     })
     setDaily(false)
+  }
+
+  function applyDateKeyword(keyword: 'today' | 'tomorrow') {
+    const parsed = parseSchedule(schedule.trim())
+    if (parsed?.kind === 'todo' && parsed.time) {
+      setSchedule(`${keyword} ${parsed.time}`)
+    } else {
+      setSchedule(keyword)
+    }
+    setError(null)
   }
 
   return (
@@ -123,31 +165,22 @@ export default function Edit() {
           </Field>
 
           {task.kind === 'todo' && (
-            <>
-              <Field label="due">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={due}
-                    onChange={(e) => setDue(e.target.value)}
-                    className="bg-transparent outline-none font-mono text-[12px]"
-                    style={{ color: 'var(--text)' }}
-                  />
-                  <Pill onClick={() => setDue(todayISO())}>today</Pill>
-                  <Pill onClick={() => setDue(addDays(todayISO(), 1))}>tomorrow</Pill>
-                  {due && <Pill onClick={() => setDue('')}>clear</Pill>}
-                </div>
-              </Field>
-              <Field label="time">
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="bg-transparent outline-none font-mono text-[12px]"
-                  style={{ color: 'var(--text)' }}
+            <FieldTop label="when">
+              <div className="flex items-start gap-2">
+                <ScheduleInput
+                  mode="schedule"
+                  value={schedule}
+                  onChange={(v) => { setSchedule(v); setError(null) }}
+                  placeholder="e.g. today 10:00, fri 14:00, 2026-05-12"
+                  className="flex-1 flex flex-col gap-1"
+                  inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
+                  inputStyle={{ color: 'var(--text)' }}
                 />
-              </Field>
-            </>
+                <Pill onClick={() => applyDateKeyword('today')}>today</Pill>
+                <Pill onClick={() => applyDateKeyword('tomorrow')}>tomorrow</Pill>
+                {schedule && <Pill onClick={() => { setSchedule(''); setError(null) }}>clear</Pill>}
+              </div>
+            </FieldTop>
           )}
 
           {task.kind === 'recurring' && (
@@ -186,24 +219,17 @@ export default function Edit() {
                   </button>
                 </div>
               </Field>
-              <Field label="start">
-                <input
-                  type="time"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                  className="bg-transparent outline-none font-mono text-[12px]"
-                  style={{ color: 'var(--text)' }}
+              <FieldTop label="time">
+                <ScheduleInput
+                  mode="time-range"
+                  value={timeRange}
+                  onChange={(v) => { setTimeRange(v); setError(null) }}
+                  placeholder="e.g. 10:00 or 10:00-11:00"
+                  className="flex flex-col gap-1"
+                  inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
+                  inputStyle={{ color: 'var(--text)' }}
                 />
-              </Field>
-              <Field label="end">
-                <input
-                  type="time"
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                  className="bg-transparent outline-none font-mono text-[12px]"
-                  style={{ color: 'var(--text)' }}
-                />
-              </Field>
+              </FieldTop>
             </>
           )}
         </div>
@@ -212,6 +238,7 @@ export default function Edit() {
              style={{ borderTop: '1px solid var(--border)', color: 'var(--muted)' }}>
           <span>↵ save</span>
           <span>esc cancel</span>
+          {error && <span style={{ color: 'var(--danger)', textTransform: 'none' }}>{error}</span>}
         </div>
       </div>
     </div>
@@ -222,6 +249,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="flex items-center gap-3">
       <span className="font-mono text-[10px] uppercase tracking-widest w-14 shrink-0" style={{ color: 'var(--muted)' }}>
+        {label}
+      </span>
+      <div className="flex-1">{children}</div>
+    </div>
+  )
+}
+
+function FieldTop({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="font-mono text-[10px] uppercase tracking-widest w-14 shrink-0 pt-1.5" style={{ color: 'var(--muted)' }}>
         {label}
       </span>
       <div className="flex-1">{children}</div>
