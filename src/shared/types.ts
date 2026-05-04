@@ -69,7 +69,7 @@ export const DEFAULT_DATA: AppData = {
   version: 1,
   settings: {
     activeTheme: 'dark',
-    globalHotkey: 'Alt+Space',
+    globalHotkey: 'Cmd+Shift+Space',
     transparency: false,
     defaultView: 'todo'
   },

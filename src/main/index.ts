@@ -35,7 +35,7 @@ if (!gotLock) {
     })
 
     registerIpc()
-    registerGlobalHotkey(data.settings.globalHotkey || 'Alt+Space')
+    registerGlobalHotkey(data.settings.globalHotkey || 'Cmd+Shift+Space')
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow({ transparency: useTransparency })
