@@ -2,36 +2,18 @@
 
 vim driven ez todo list
 
-## run
+## "App is damaged"
+
+fix by running (i'll fix this once i can pay for a key lol):
 
 ```sh
-npm install
-npm run dev      # dev with HMR
-npm run dist     # build a packaged .dmg locally
+xattr -cr /Applications/inkcal.sh.app
 ```
 
-## install / release
-
-once you've cut a build, drag `release/mac-arm64/inkcal.sh.app` into `/Applications` and launch it from spotlight/raycast/finder. data lives in `~/Library/Application Support/inkcal-sh/data.json` and persists across dev runs and packaged builds.
-
-to cut a new version + auto-publish to GitHub releases:
-
-```sh
-npm run release             # patch bump (0.1.0 -> 0.1.1)
-npm run release minor       # minor bump
-npm run release 1.2.3       # explicit version
-npm run release -- --local  # build + install locally, no git/publish
-```
-
-requires `gh` to be authenticated (`gh auth login`). the script bumps `package.json`, builds, uploads the dmg+zip+`latest-mac.yml` to a GitHub release, copies the new `.app` into `/Applications`, then commits and pushes the tag.
-
-installed copies check `inkitori/inkcal.sh` releases on launch and every 6h via [`electron-updater`](https://www.electron.build/auto-update). updates download silently in the background and apply on next quit. open the about panel (⌘P → `about inkcal.sh`) to see current version, dev info, repo link, and update status. ⌘P → `check for updates` forces a check.
-
-note: builds are unsigned (ad-hoc signed only). first launch macOS will say "unidentified developer" — right-click → open → open. unsigned + auto-updating works for personal use; for distribution to others, get an apple developer cert and add `signtool`/notarization to the release script.
 
 ## capture syntax (⌘K)
 
-natural language goes through [chrono](https://github.com/wanasit/chrono) by default — no prefix.
+natural language goes through [chrono](https://github.com/wanasit/chrono)
 
 ```
 today write report                    todo due today
@@ -145,3 +127,32 @@ a single human-readable file:
 ## stack
 
 electron-vite · react · tailwind · zustand · chrono-node · fuse.js · single json.
+
+# other random development stuff claude wrote
+
+## run
+
+```sh
+npm install
+npm run dev      # dev with HMR
+npm run dist     # build a packaged .dmg locally
+```
+
+## install / release
+
+once you've cut a build, drag `release/mac-arm64/inkcal.sh.app` into `/Applications` and launch it from spotlight/raycast/finder. data lives in `~/Library/Application Support/inkcal-sh/data.json` and persists across dev runs and packaged builds.
+
+to cut a new version + auto-publish to GitHub releases:
+
+```sh
+npm run release             # patch bump (0.1.0 -> 0.1.1)
+npm run release minor       # minor bump
+npm run release 1.2.3       # explicit version
+npm run release -- --local  # build + install locally, no git/publish
+```
+
+requires `gh` to be authenticated (`gh auth login`). the script bumps `package.json`, builds, uploads the dmg+zip+`latest-mac.yml` to a GitHub release, copies the new `.app` into `/Applications`, then commits and pushes the tag.
+
+installed copies check `inkitori/inkcal.sh` releases on launch and every 6h via [`electron-updater`](https://www.electron.build/auto-update). updates download silently in the background and apply on next quit. open the about panel (⌘P → `about inkcal.sh`) to see current version, dev info, repo link, and update status. ⌘P → `check for updates` forces a check.
+
+note: builds are unsigned (ad-hoc signed only). first launch macOS will say "unidentified developer" — right-click → open → open. unsigned + auto-updating works for personal use; for distribution to others, get an apple developer cert and add `signtool`/notarization to the release script.
