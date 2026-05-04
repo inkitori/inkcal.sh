@@ -42,6 +42,16 @@ export function createWindow(opts: CreateOpts = {}): BrowserWindow {
     return { action: 'deny' }
   })
 
+  // chromium grabs cmd+p (print) before the renderer can see it. intercept and
+  // forward to the renderer so the palette opens instead.
+  mainWin.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+    if ((input.meta || input.control) && input.key.toLowerCase() === 'p') {
+      event.preventDefault()
+      mainWin?.webContents.send('shortcut:openPalette')
+    }
+  })
+
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWin.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {

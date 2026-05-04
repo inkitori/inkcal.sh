@@ -54,6 +54,12 @@ export default function App() {
     window.inkcal.registerShortcut(settings.globalHotkey)
   }, [ready, settings.globalHotkey])
 
+  // chromium swallows cmd+p (print) before the renderer keymap sees it; main forwards via ipc
+  useEffect(() => {
+    const unsub = window.inkcal.onOpenPalette(() => useStore.getState().openPalette())
+    return () => { unsub() }
+  }, [])
+
   if (!ready) {
     return (
       <div className="h-full flex items-center justify-center font-mono text-[11px] uppercase"

@@ -31,6 +31,11 @@ const api = {
     const listener = (_e: unknown, state: UpdaterState) => cb(state)
     ipcRenderer.on('updater:state', listener)
     return () => ipcRenderer.removeListener('updater:state', listener)
+  },
+  onOpenPalette: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('shortcut:openPalette', listener)
+    return () => ipcRenderer.removeListener('shortcut:openPalette', listener)
   }
 }
 
