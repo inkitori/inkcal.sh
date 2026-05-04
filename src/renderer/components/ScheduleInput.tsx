@@ -1,18 +1,7 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react'
-import {
-  parseCapture,
-  parseSchedule,
-  parseTimeRange,
-  parseChronoLeading,
-  formatSchedule,
-  type ParsedSchedule,
-  type ParseResult
-} from '@/lib/parser'
-
-type Mode = 'capture' | 'schedule' | 'time-range'
+import { previewFor } from '@/lib/parser'
 
 interface Props {
-  mode: Mode
   value: string
   onChange: (raw: string) => void
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -21,15 +10,18 @@ interface Props {
   className?: string
   inputClassName?: string
   inputStyle?: React.CSSProperties
+  /** override the live-preview function — defaults to parser.previewFor */
+  preview?: (raw: string) => string
 }
 
 const ScheduleInput = forwardRef<HTMLInputElement, Props>(function ScheduleInput(
-  { mode, value, onChange, onKeyDown, placeholder, autoFocus, className, inputClassName, inputStyle },
+  { value, onChange, onKeyDown, placeholder, autoFocus, className, inputClassName, inputStyle, preview },
   ref
 ) {
   const trimmed = value.trim()
   const isEmpty = trimmed === ''
-  const currentPreview = useMemo(() => previewFor(mode, value), [mode, value])
+  const previewFn = preview ?? previewFor
+  const currentPreview = useMemo(() => previewFn(value), [previewFn, value])
   const [lastGoodPreview, setLastGoodPreview] = useState(currentPreview)
 
   useEffect(() => {
@@ -69,54 +61,3 @@ const ScheduleInput = forwardRef<HTMLInputElement, Props>(function ScheduleInput
 })
 
 export default ScheduleInput
-
-function previewFor(mode: Mode, raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  if (mode === 'capture') {
-    const result = parseCapture(trimmed)
-    if (result) return formatCapturePreview(result)
-    // partial chrono: show schedule even before the title is typed
-    if (trimmed.startsWith('!')) {
-      const rest = trimmed.slice(1).trim()
-      if (rest) {
-        const r = parseChronoLeading(rest)
-        if (r) {
-          const sched = formatSchedule(r.schedule)
-          return r.titleText ? `${sched} · ${r.titleText}` : sched
-        }
-      }
-    }
-    return ''
-  }
-  if (mode === 'schedule') {
-    const result = parseSchedule(trimmed)
-    if (!result) return ''
-    return formatSchedule(result)
-  }
-  if (mode === 'time-range') {
-    const result = parseTimeRange(trimmed)
-    if (!result) return ''
-    if (!result.start && !result.end) return 'no time'
-    if (result.start && result.end) return `${result.start}–${result.end}`
-    return result.start || ''
-  }
-  return ''
-}
-
-function formatCapturePreview(r: ParseResult): string {
-  const t = r.task
-  if (t.kind === 'note') return 'note'
-  if (t.kind === 'recurring' && t.recurrence) {
-    const sched: ParsedSchedule = { kind: 'recurring', recurrence: t.recurrence }
-    return formatSchedule(sched)
-  }
-  // chrono path: show "schedule · title" so the boundary chrono drew is visible
-  if (r.prefix === 'chrono') {
-    const sched: ParsedSchedule = { kind: 'todo', due: t.due ?? null, time: t.time, endTime: t.endTime }
-    return `${formatSchedule(sched)} · ${t.title ?? ''}`
-  }
-  if (!t.due) return 'inbox'
-  const sched: ParsedSchedule = { kind: 'todo', due: t.due, time: t.time, endTime: t.endTime }
-  return formatSchedule(sched)
-}

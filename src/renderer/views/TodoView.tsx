@@ -9,10 +9,11 @@ import {
 } from '@/lib/store'
 import { instancesForDate } from '@/lib/recurrence'
 import { todayISO, weekdayOf } from '@/lib/date'
+import { recurrenceShort } from '@/lib/parser'
 import Section from '@/components/Section'
 import TaskRow from '@/components/TaskRow'
 import { useListKeymap } from '@/lib/keymap'
-import type { Recurrence, Task, Weekday } from '@/../shared/types'
+import type { Task } from '@/../shared/types'
 
 interface Row {
   task: Task
@@ -22,17 +23,6 @@ interface Row {
   showDue?: boolean
   scheduleOnly?: boolean
   recurrenceLabel?: string
-}
-
-const DAY_SHORT: Record<Weekday, string> = {
-  mon: 'm', tue: 't', wed: 'w', thu: 'r', fri: 'f', sat: 's', sun: 'u'
-}
-
-function recurrenceShort(r: Recurrence | undefined): string {
-  if (!r) return ''
-  if (r.daily) return 'daily'
-  if (r.days?.length) return r.days.map(d => DAY_SHORT[d]).join('')
-  return ''
 }
 
 export default function TodoView() {
@@ -68,7 +58,13 @@ export default function TodoView() {
   const rows: Row[] = useMemo(() => {
     const r: Row[] = []
     for (const t of overdue) r.push({ task: t, date: today, isCompleted: false, isOverdue: true, showDue: true })
-    for (const inst of todayRecurring) r.push({ task: inst.task, date: today, isCompleted: inst.isCompleted, showDue: false })
+    for (const inst of todayRecurring) r.push({
+      task: inst.task,
+      date: today,
+      isCompleted: inst.isCompleted,
+      showDue: false,
+      recurrenceLabel: recurrenceShort(inst.task.recurrence)
+    })
     for (const t of todayTodos) {
       const completed = completions.some(c => c.taskId === t.id)
       r.push({ task: t, date: today, isCompleted: completed, showDue: false })

@@ -90,6 +90,9 @@ export default function TaskRow({
         />
       ) : (
         <span className="flex-1 truncate" style={titleStyle}>
+          {task.kind === 'recurring' && (
+            <span style={{ color: 'var(--muted-2)', marginRight: 4 }}>↻</span>
+          )}
           {task.title || task.body || '(untitled)'}
         </span>
       )}

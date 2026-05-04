@@ -1,225 +1,66 @@
 import type { Task, Recurrence, Weekday } from '@/../shared/types'
+import { WEEKDAYS } from '@/../shared/types'
 import { addDays, todayISO, weekdayOf, fromISODate, diffDays, toISODate } from './date'
 import { nanoid } from 'nanoid'
 import * as chrono from 'chrono-node'
 
-const DAY_PREFIXES: Record<string, Weekday> = {
-  mon: 'mon', monday: 'mon',
-  tue: 'tue', tuesday: 'tue', tues: 'tue',
-  wed: 'wed', wednesday: 'wed',
-  thu: 'thu', thursday: 'thu', thur: 'thu', thurs: 'thu',
-  fri: 'fri', friday: 'fri',
-  sat: 'sat', saturday: 'sat',
-  sun: 'sun', sunday: 'sun'
+const COMBO_LETTER: Record<Weekday, string> = {
+  mon: 'm', tue: 't', wed: 'w', thu: 'r', fri: 'f', sat: 's', sun: 'u'
 }
 
-const DAY_SHORT: Record<Weekday, string> = {
-  mon: 'mon', tue: 'tue', wed: 'wed', thu: 'thu', fri: 'fri', sat: 'sat', sun: 'sun'
+const COMBO_TO_DAY: Record<string, Weekday> = {
+  m: 'mon', t: 'tue', w: 'wed', r: 'thu', f: 'fri', s: 'sat', u: 'sun'
 }
+
+const DAY_LONG: Record<Weekday, string> = {
+  mon: 'monday', tue: 'tuesday', wed: 'wednesday', thu: 'thursday',
+  fri: 'friday', sat: 'saturday', sun: 'sunday'
+}
+
+const DAY_WORD_TO_DAY: Record<string, Weekday> = {
+  mon: 'mon', mons: 'mon', monday: 'mon', mondays: 'mon',
+  tue: 'tue', tues: 'tue', tuesday: 'tue', tuesdays: 'tue',
+  wed: 'wed', weds: 'wed', wednesday: 'wed', wednesdays: 'wed',
+  thu: 'thu', thur: 'thu', thurs: 'thu', thursday: 'thu', thursdays: 'thu',
+  fri: 'fri', fris: 'fri', friday: 'fri', fridays: 'fri',
+  sat: 'sat', sats: 'sat', saturday: 'sat', saturdays: 'sat',
+  sun: 'sun', suns: 'sun', sunday: 'sun', sundays: 'sun'
+}
+
+const PLURAL_DAY_WORDS = new Set([
+  'mondays', 'tuesdays', 'wednesdays', 'thursdays', 'fridays', 'saturdays', 'sundays'
+])
+
+const WEEKDAYS_M_F: Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri']
+const WEEKEND_DAYS: Weekday[] = ['sat', 'sun']
 
 const MONTHS_SHORT = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
 
-const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
-const TIME_RE = /^(\d{1,2}:\d{2})(?:-(\d{1,2}:\d{2}))?$/
-
-function parseDayCombo(token: string): Weekday[] | null {
-  // 'mwf', 'tth', 'mtwrf', 'mwfsa' etc — each char maps to one day
-  const map: Record<string, Weekday> = {
-    m: 'mon', t: 'tue', w: 'wed', r: 'thu', f: 'fri', s: 'sat', u: 'sun'
-  }
-  const out: Weekday[] = []
-  for (const c of token.toLowerCase()) {
-    const d = map[c]
-    if (!d) return null
-    if (!out.includes(d)) out.push(d)
-  }
-  return out.length ? out : null
-}
-
-function nextWeekday(target: Weekday): string {
-  let cur = todayISO()
-  for (let i = 1; i <= 7; i++) {
-    const d = addDays(cur, i)
-    if (weekdayOf(d) === target) return d
-  }
-  return cur
-}
-
-function pad2(s: string): string {
-  const [h, m] = s.split(':')
-  return `${h.padStart(2, '0')}:${m}`
-}
-
-function stripColon(token: string): string {
-  return token.replace(/:$/, '')
-}
-
-function toHHMM(d: Date): string {
-  const h = String(d.getHours()).padStart(2, '0')
-  const m = String(d.getMinutes()).padStart(2, '0')
-  return `${h}:${m}`
-}
-
-/**
- * Run chrono on input that follows a leading `!`. Requires the parsed date phrase
- * to start at index 0 — anything not matched by chrono becomes the title.
- */
-export function parseChronoLeading(input: string): { schedule: ParsedSchedule; titleText: string } | null {
-  const trimmed = input.trim()
-  if (!trimmed) return null
-  const results = chrono.parse(trimmed, new Date(), { forwardDate: true })
-  if (results.length === 0) return null
-  const r = results[0]
-  if (r.index !== 0) return null
-  const due = toISODate(r.start.date())
-  const time = r.start.isCertain('hour') ? toHHMM(r.start.date()) : undefined
-  const endTime = r.end && r.end.isCertain('hour') ? toHHMM(r.end.date()) : undefined
-  const titleText = trimmed.slice(r.text.length).trim()
-  return { schedule: { kind: 'todo', due, time, endTime }, titleText }
-}
-
-export type ParsedSchedule =
-  | { kind: 'todo'; due: string | null; time?: string; endTime?: string }
-  | { kind: 'recurring'; recurrence: Recurrence }
-
-interface SchedulePrefix {
-  schedule: ParsedSchedule
-  consumedTokens: number
-}
-
-/**
- * Tries to parse leading tokens as a schedule prefix.
- * Returns null if the first token doesn't look like a date/time/recurrence keyword.
- */
-function tryParseSchedulePrefix(tokens: string[]): SchedulePrefix | null {
-  if (tokens.length === 0) return null
-  const first = tokens[0].toLowerCase()
-
-  // recurring: 'daily'
-  if (first === 'daily') {
-    const rec: Recurrence = { daily: true }
-    let consumed = 1
-    consumed += consumeRecurringTime(tokens, consumed, rec)
-    consumed += consumeRecurringMarker(tokens, consumed)
-    return { schedule: { kind: 'recurring', recurrence: rec }, consumedTokens: consumed }
-  }
-
-  // recurring: dayCombo like 'mwf' (must be 2+ chars to avoid colliding with single weekday words like 'm')
-  const combo = first.length >= 2 ? parseDayCombo(first) : null
-  if (combo && !DAY_PREFIXES[first]) {
-    const rec: Recurrence = { days: combo }
-    let consumed = 1
-    consumed += consumeRecurringTime(tokens, consumed, rec)
-    consumed += consumeRecurringMarker(tokens, consumed)
-    return { schedule: { kind: 'recurring', recurrence: rec }, consumedTokens: consumed }
-  }
-
-  // todo: today / tomorrow / weekday / ISO date — colon optional
-  const cleanFirst = stripColon(first)
-  let due: string | null | undefined
-  if (cleanFirst === 'today') due = todayISO()
-  else if (cleanFirst === 'tomorrow' || cleanFirst === 'tmrw') due = addDays(todayISO(), 1)
-  else if (DAY_PREFIXES[cleanFirst]) due = nextWeekday(DAY_PREFIXES[cleanFirst])
-  else if (ISO_RE.test(cleanFirst)) due = cleanFirst
-
-  if (due !== undefined) {
-    let consumed = 1
-    let time: string | undefined
-    let endTime: string | undefined
-    const next = tokens[consumed]
-    if (next) {
-      const tm = TIME_RE.exec(stripColon(next))
-      if (tm) {
-        time = pad2(tm[1])
-        if (tm[2]) endTime = pad2(tm[2])
-        consumed += 1
-      }
-    }
-    return { schedule: { kind: 'todo', due, time, endTime }, consumedTokens: consumed }
-  }
-
-  return null
-}
-
-function consumeRecurringTime(tokens: string[], from: number, rec: Recurrence): number {
-  const next = tokens[from]
-  if (!next) return 0
-  const tm = TIME_RE.exec(next)
-  if (!tm) return 0
-  rec.start = pad2(tm[1])
-  if (tm[2]) rec.end = pad2(tm[2])
-  return 1
-}
-
-function consumeRecurringMarker(tokens: string[], from: number): number {
-  const t = tokens[from]?.toLowerCase()
-  if (t === '*recurring' || t === 'recurring' || t === '*') return 1
-  return 0
-}
-
-/**
- * Parses an input that is *only* a schedule (no title). Used by the Edit modal.
- * Returns null if the input is empty or unparseable as a schedule.
- *
- * Supports the `!` prefix for natural-language input via chrono. In schedule-only
- * mode the chrono match must consume the entire post-`!` input.
- */
-export function parseSchedule(input: string): ParsedSchedule | null {
-  const trimmed = input.trim()
-  if (!trimmed) return null
-
-  if (trimmed.startsWith('!')) {
-    const rest = trimmed.slice(1).trim()
-    if (!rest) return null
-    const r = parseChronoLeading(rest)
-    if (!r) return null
-    if (r.titleText !== '') return null
-    return r.schedule
-  }
-
-  const tokens = trimmed.split(/\s+/)
-  const prefix = tryParseSchedulePrefix(tokens)
-  if (!prefix) return null
-  // schedule-only mode: every token must be consumed
-  if (prefix.consumedTokens !== tokens.length) return null
-  return prefix.schedule
-}
-
-/**
- * Parses just a time or time-range like "10:00" or "10:00-11:00".
- * Used by the recurring-task editor where days are managed by toggle buttons.
- */
-export function parseTimeRange(input: string): { start?: string; end?: string } | null {
-  const trimmed = input.trim()
-  if (!trimmed) return { start: undefined, end: undefined }
-  const tokens = trimmed.split(/\s+/)
-  if (tokens.length !== 1) return null
-  const tm = TIME_RE.exec(tokens[0])
-  if (!tm) return null
-  const out: { start?: string; end?: string } = { start: pad2(tm[1]) }
-  if (tm[2]) out.end = pad2(tm[2])
-  return out
-}
+// — public types —
 
 export interface ParseResult {
   task: Task
-  /** the raw token consumed for the prefix, helpful for debugging */
-  prefix?: string
+  prefix: 'note' | 'recurring' | 'chrono' | 'inbox'
 }
 
+export interface ScheduleParts {
+  kind: 'recurring' | 'todo' | 'inbox'
+  recurrence?: Recurrence
+  due?: string | null
+  time?: string
+  endTime?: string
+}
+
+// — public api —
+
 /**
- * Parses inputs like:
- *   today: write report          (colon optional: "today write report" works too)
- *   fri: 331 hw3
- *   2026-05-12: pay rent
- *   mwf 10:00-11:00 *recurring lecture
- *   daily 08:00 *recurring stretch
- *   note: random thought about X
- *   !may 6 at noon doctor appt   (! routes through chrono natural-language parser)
- *   !next friday call mom
- *   write report                  (bare → inbox)
+ * Parse a user input into a Task. Order:
+ *   1. note: …
+ *   2. recurring patterns ("every friday at 10 yoga", "mwf 10-11 lecture", "daily stretch")
+ *   3. chrono one-off ("may 6 doctor", "tomorrow at 2pm meeting")
+ *   4. inbox (fallback — bare title with no schedule)
  */
-export function parseCapture(input: string): ParseResult | null {
+export function parse(input: string): ParseResult | null {
   const trimmed = input.trim()
   if (!trimmed) return null
 
@@ -231,77 +72,433 @@ export function parseCapture(input: string): ParseResult | null {
     ...overrides
   })
 
-  // explicit kind: note
+  // note: body
   if (/^note\s*:/i.test(trimmed)) {
-    const body = trimmed.replace(/^note\s*:\s*/i, '')
+    const body = trimmed.replace(/^note\s*:\s*/i, '').trim()
     if (!body) return null
     return { task: baseTask({ kind: 'note', body }), prefix: 'note' }
   }
 
-  // chrono natural-language path: leading "!"
-  if (trimmed.startsWith('!')) {
-    const rest = trimmed.slice(1).trim()
-    if (!rest) return null
-    const r = parseChronoLeading(rest)
-    if (!r || !r.titleText) return null
-    if (r.schedule.kind !== 'todo') return null
+  const rec = tryRecurringWithTitle(trimmed)
+  if (rec) {
     return {
-      task: baseTask({
-        title: r.titleText,
-        due: r.schedule.due,
-        time: r.schedule.time,
-        endTime: r.schedule.endTime
-      }),
+      task: baseTask({ kind: 'recurring', title: rec.title, recurrence: rec.recurrence }),
+      prefix: 'recurring'
+    }
+  }
+
+  const ch = tryChronoWithTitle(trimmed)
+  if (ch && ch.title) {
+    return {
+      task: baseTask({ title: ch.title, due: ch.due, time: ch.time, endTime: ch.endTime }),
       prefix: 'chrono'
     }
   }
 
-  const tokens = trimmed.split(/\s+/)
-  const prefix = tryParseSchedulePrefix(tokens)
-
-  if (prefix) {
-    const title = tokens.slice(prefix.consumedTokens).join(' ').trim()
-    if (!title) return null
-    if (prefix.schedule.kind === 'recurring') {
-      return {
-        task: baseTask({ kind: 'recurring', title, recurrence: prefix.schedule.recurrence }),
-        prefix: 'recurring'
-      }
-    }
-    return {
-      task: baseTask({
-        title,
-        due: prefix.schedule.due,
-        time: prefix.schedule.time,
-        endTime: prefix.schedule.endTime
-      }),
-      prefix: 'todo'
-    }
-  }
-
-  // bare → inbox todo
   return { task: baseTask({ title: trimmed, due: null }), prefix: 'inbox' }
 }
 
 /**
- * Render a parsed schedule as a one-line preview for the editor.
- * Lowercase, terse — matches the app's house style (see fmtHeaderDate in date.ts).
+ * Parse just a schedule (no title required) — used by the Edit modal where
+ * the title lives in its own field. Empty input → inbox (no schedule).
  */
-export function formatSchedule(p: ParsedSchedule | null): string {
-  if (!p) return ''
-  if (p.kind === 'todo') {
-    const date = formatDuePreview(p.due)
-    if (!p.time) return date
-    if (p.endTime) return `${date}, ${p.time}–${p.endTime}`
-    return `${date}, ${p.time}`
-  }
-  const dayPart = formatDaysPreview(p.recurrence)
-  const timePart = formatTimeRangePreview(p.recurrence)
-  if (!timePart) return dayPart
-  return `${dayPart}, ${timePart}`
+export function parseScheduleOnly(input: string): ScheduleParts | null {
+  const trimmed = input.trim()
+  if (!trimmed) return { kind: 'inbox' }
+
+  const rec = tryRecurring(trimmed, false)
+  if (rec) return { kind: 'recurring', recurrence: rec.recurrence }
+
+  const ch = tryChrono(trimmed, false)
+  if (ch) return { kind: 'todo', due: ch.due, time: ch.time, endTime: ch.endTime }
+
+  return null
 }
 
-function formatDuePreview(due: string | null): string {
+/**
+ * Render a Task back to the canonical input string so the Edit modal can
+ * round-trip it through the parser. Inverse of parse() for parseable shapes.
+ */
+export function taskToInput(task: Task): string {
+  if (task.kind === 'note') return `note: ${task.body ?? ''}`.trim()
+  if (task.kind === 'recurring') {
+    const r = task.recurrence
+    if (!r) return task.title ?? ''
+    const days = recurringDayInput(r)
+    const time = recurringTimeInput(r)
+    return [days, time, task.title].filter(Boolean).join(' ').trim()
+  }
+  // todo
+  const date = task.due ? todoDateInput(task.due) : ''
+  const time = task.time
+    ? (task.endTime ? `${task.time}-${task.endTime}` : task.time)
+    : ''
+  return [date, time, task.title].filter(Boolean).join(' ').trim()
+}
+
+/**
+ * Render just the schedule portion of a task (for the Edit modal's `when` field).
+ */
+export function scheduleOnlyToInput(task: Task): string {
+  if (task.kind === 'note') return ''
+  if (task.kind === 'recurring') {
+    const r = task.recurrence
+    if (!r) return ''
+    const days = recurringDayInput(r)
+    const time = recurringTimeInput(r)
+    return [days, time].filter(Boolean).join(' ').trim()
+  }
+  if (!task.due) return ''
+  const date = todoDateInput(task.due)
+  const time = task.time
+    ? (task.endTime ? `${task.time}-${task.endTime}` : task.time)
+    : ''
+  return [date, time].filter(Boolean).join(' ').trim()
+}
+
+/**
+ * Short live-preview hint for ScheduleInput.
+ */
+export function previewFor(input: string): string {
+  const trimmed = input.trim()
+  if (!trimmed) return ''
+
+  if (/^note\s*:/i.test(trimmed)) {
+    const body = trimmed.replace(/^note\s*:\s*/i, '').trim()
+    return body ? `note · ${body}` : 'note'
+  }
+
+  const rec = tryRecurring(trimmed, false)
+  if (rec) {
+    const parts = [recurrencePreview(rec.recurrence), rec.title].filter(Boolean)
+    return parts.length ? parts.join(' · ') : ''
+  }
+
+  const ch = tryChrono(trimmed, false)
+  if (ch) {
+    const sched = [duePreview(ch.due), timePreview(ch.time, ch.endTime)].filter(Boolean).join(' · ')
+    return ch.title ? `${sched} · ${ch.title}` : sched
+  }
+
+  return `inbox · ${trimmed}`
+}
+
+/**
+ * Schedule-only preview for the Edit modal's `when` field.
+ */
+export function previewSchedule(input: string): string {
+  const trimmed = input.trim()
+  if (!trimmed) return ''
+  const result = parseScheduleOnly(trimmed)
+  if (!result) return ''
+  if (result.kind === 'recurring' && result.recurrence) {
+    return recurrencePreview(result.recurrence)
+  }
+  if (result.kind === 'todo') {
+    return [duePreview(result.due), timePreview(result.time, result.endTime)].filter(Boolean).join(' · ')
+  }
+  return ''
+}
+
+/**
+ * Compact day-badge for the right side of TaskRow (e.g. "mwf", "daily").
+ */
+export function recurrenceShort(rec: Recurrence | undefined): string {
+  if (!rec) return ''
+  if (rec.daily) return 'daily'
+  if (rec.days?.length) return rec.days.map(d => COMBO_LETTER[d]).join('')
+  return ''
+}
+
+// — recurring parsing —
+
+function tryRecurringWithTitle(input: string): { recurrence: Recurrence; title: string } | null {
+  const r = tryRecurring(input, true)
+  if (!r || !r.title) return null
+  return r
+}
+
+interface RecurringMatch {
+  recurrence: Recurrence
+  title: string
+}
+
+function tryRecurring(input: string, requireTitle: boolean): RecurringMatch | null {
+  // Reject "every other …" (no data-model support for intervals).
+  if (/^every\s+other\b/i.test(input)) return null
+
+  // 1. daily / every day
+  let m = /^(?:every\s+day|daily)\b/i.exec(input)
+  if (m) return finishRecurring(input, m[0].length, { daily: true }, requireTitle)
+
+  // 2. weekly → today's weekday
+  m = /^weekly\b/i.exec(input)
+  if (m) return finishRecurring(input, m[0].length, { days: [weekdayOf(todayISO())] }, requireTitle)
+
+  // 3. every weekday(s) | weekday(s)
+  m = /^(?:every\s+weekdays?|weekdays?)\b/i.exec(input)
+  if (m) return finishRecurring(input, m[0].length, { days: [...WEEKDAYS_M_F] }, requireTitle)
+
+  // 4. every weekend(s) | weekend(s)
+  m = /^(?:every\s+weekends?|weekends?)\b/i.exec(input)
+  if (m) return finishRecurring(input, m[0].length, { days: [...WEEKEND_DAYS] }, requireTitle)
+
+  // 5. every <day list>
+  m = /^every\s+/i.exec(input)
+  if (m) {
+    const after = input.slice(m[0].length)
+    const list = consumeDayList(after, false)
+    if (list && list.days.length > 0) {
+      return finishRecurring(input, m[0].length + list.consumed, { days: list.days }, requireTitle)
+    }
+    return null
+  }
+
+  // 6. plural day list (mondays, mondays and wednesdays, mondays/wednesdays/fridays)
+  const list = consumeDayList(input, true)
+  if (list && list.days.length > 0) {
+    return finishRecurring(input, list.consumed, { days: list.days }, requireTitle)
+  }
+
+  // 7. day combo (mwf, mtwrf, etc.) — 2+ chars from [mtwrfsu] only
+  m = /^([mtwrfsu]{2,})(?=\s|$)/i.exec(input)
+  if (m) {
+    const word = m[1].toLowerCase()
+    // Don't match if it spells out a real word that DAY_WORD_TO_DAY already covers
+    // (e.g. "wed" is not a combo, it's the word for Wednesday).
+    if (!DAY_WORD_TO_DAY[word]) {
+      const days: Weekday[] = []
+      for (const c of word) {
+        const d = COMBO_TO_DAY[c]
+        if (d && !days.includes(d)) days.push(d)
+      }
+      if (days.length > 0) {
+        return finishRecurring(input, m[0].length, { days }, requireTitle)
+      }
+    }
+  }
+
+  return null
+}
+
+function finishRecurring(
+  input: string,
+  consumed: number,
+  rec: Recurrence,
+  requireTitle: boolean
+): RecurringMatch | null {
+  const rest = input.slice(consumed).replace(/^\s+/, '')
+  const tm = consumeTimeFromStart(rest)
+  const afterTime = tm ? rest.slice(tm.consumed).replace(/^\s+/, '') : rest
+  const title = afterTime.trim()
+  if (requireTitle && !title) return null
+  if (tm) {
+    if (tm.start) rec.start = tm.start
+    if (tm.end) rec.end = tm.end
+  }
+  // Reject backwards same-day ranges
+  if (rec.start && rec.end && rec.end <= rec.start) return null
+  return { recurrence: rec, title }
+}
+
+function consumeDayList(s: string, requirePlural: boolean): { days: Weekday[]; consumed: number } | null {
+  // Bare path (requirePlural=true): the first word must be plural OR be followed by
+  // an explicit list separator (",", "/", " and "). This disambiguates a recurring
+  // list ("mon, wed, fri") from a one-off ("monday call mom") that chrono should handle.
+  const first = peekDayWord(s, 0)
+  if (!first) return null
+
+  if (requirePlural && !PLURAL_DAY_WORDS.has(first.word)) {
+    const after = s.slice(first.length)
+    if (!/^(?:\s*[,/]\s*|\s+and\s+)/.test(after)) return null
+  }
+
+  const days: Weekday[] = [first.day]
+  let i = first.length
+
+  while (true) {
+    const sepMatch = /^(?:\s*[,/]\s*|\s+and\s+|\s+)/.exec(s.slice(i))
+    if (!sepMatch) break
+    const next = peekDayWord(s, i + sepMatch[0].length)
+    if (!next) break
+    i += sepMatch[0].length + next.length
+    if (!days.includes(next.day)) days.push(next.day)
+  }
+
+  return { days, consumed: i }
+}
+
+function peekDayWord(s: string, from: number): { day: Weekday; word: string; length: number } | null {
+  const slice = s.slice(from)
+  const m = /^([a-z]+)(?=\s|[,/]|$)/i.exec(slice)
+  if (!m) return null
+  const word = m[1].toLowerCase()
+  const day = DAY_WORD_TO_DAY[word]
+  if (!day) return null
+  return { day, word, length: m[0].length }
+}
+
+// — time parsing —
+
+const TIME_AT_BARE = `(?:noon|midnight|\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m|\\d{1,2})`
+const TIME_STRICT = `(?:noon|midnight|\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m)`
+
+function consumeTimeFromStart(s: string): { start: string; end?: string; consumed: number } | null {
+  // 1. "at <time> [(- | – | to) <time>]"
+  let re = new RegExp(`^at\\s+(${TIME_AT_BARE})(?:\\s*(?:-|–|to)\\s*(${TIME_AT_BARE}))?(?=\\s|$)`, 'i')
+  let m = re.exec(s)
+  if (m) {
+    const start = parseTimeWord(m[1])
+    if (start) {
+      const end = m[2] ? parseTimeWord(m[2]) : null
+      return { start, end: end ?? undefined, consumed: m[0].length }
+    }
+  }
+
+  // 2. "from <time> to <time>"
+  re = new RegExp(`^from\\s+(${TIME_AT_BARE})\\s+to\\s+(${TIME_AT_BARE})(?=\\s|$)`, 'i')
+  m = re.exec(s)
+  if (m) {
+    const start = parseTimeWord(m[1])
+    const end = parseTimeWord(m[2])
+    if (start && end) return { start, end, consumed: m[0].length }
+  }
+
+  // 3. bare <time>[-<time>] (must have colon or am/pm or noon/midnight)
+  re = new RegExp(`^(${TIME_STRICT})(?:\\s*(?:-|–|to)\\s*(${TIME_STRICT}))?(?=\\s|$)`, 'i')
+  m = re.exec(s)
+  if (m) {
+    const start = parseTimeWord(m[1])
+    if (start) {
+      const end = m[2] ? parseTimeWord(m[2]) : null
+      return { start, end: end ?? undefined, consumed: m[0].length }
+    }
+  }
+
+  return null
+}
+
+function parseTimeWord(w: string): string | null {
+  const s = w.trim().toLowerCase()
+  if (s === 'noon') return '12:00'
+  if (s === 'midnight') return '00:00'
+  let m = /^(\d{1,2}):(\d{2})\s*(am|pm)?$/.exec(s)
+  if (m) {
+    let h = parseInt(m[1], 10)
+    const min = parseInt(m[2], 10)
+    if (h > 23 || min > 59) return null
+    if (m[3] === 'pm' && h < 12) h += 12
+    if (m[3] === 'am' && h === 12) h = 0
+    return `${pad2(h)}:${pad2(min)}`
+  }
+  m = /^(\d{1,2})\s*(am|pm)$/.exec(s)
+  if (m) {
+    let h = parseInt(m[1], 10)
+    if (h > 23) return null
+    if (m[2] === 'pm' && h < 12) h += 12
+    if (m[2] === 'am' && h === 12) h = 0
+    return `${pad2(h)}:00`
+  }
+  m = /^(\d{1,2})$/.exec(s)
+  if (m) {
+    const h = parseInt(m[1], 10)
+    if (h > 23) return null
+    return `${pad2(h)}:00`
+  }
+  return null
+}
+
+function pad2(n: number | string): string {
+  return String(n).padStart(2, '0')
+}
+
+// — chrono one-off parsing —
+
+interface ChronoMatch {
+  due: string
+  time?: string
+  endTime?: string
+  title: string
+}
+
+function tryChronoWithTitle(input: string): ChronoMatch | null {
+  return tryChrono(input, true)
+}
+
+function tryChrono(input: string, requireTitle: boolean): ChronoMatch | null {
+  const results = chrono.parse(input, new Date(), { forwardDate: true })
+  if (results.length === 0) return null
+  const r = results[0]
+  // Need at least a date concept (day/weekday/month/year) — reject time-only matches
+  const hasDate =
+    r.start.isCertain('day') ||
+    r.start.isCertain('weekday') ||
+    r.start.isCertain('month') ||
+    r.start.isCertain('year')
+  if (!hasDate) return null
+  const due = toISODate(r.start.date())
+  const time = r.start.isCertain('hour') ? toHHMM(r.start.date()) : undefined
+  const endTime = r.end && r.end.isCertain('hour') ? toHHMM(r.end.date()) : undefined
+  const before = input.slice(0, r.index)
+  const after = input.slice(r.index + r.text.length)
+  const title = (before + ' ' + after).replace(/\s+/g, ' ').trim()
+  if (requireTitle && !title) return null
+  return { due, time, endTime, title }
+}
+
+function toHHMM(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+// — taskToInput helpers —
+
+function recurringDayInput(r: Recurrence): string {
+  if (r.daily) return 'daily'
+  if (!r.days || r.days.length === 0) return ''
+  const sorted = [...r.days].sort((a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b))
+  if (eqDays(sorted, WEEKDAYS_M_F)) return 'every weekday'
+  if (eqDays(sorted, WEEKEND_DAYS)) return 'every weekend'
+  // Single day → plural form ("fridays") so it round-trips as recurring.
+  // The combo form requires 2+ letters, so a single-letter combo wouldn't re-parse.
+  if (sorted.length === 1) return `${DAY_LONG[sorted[0]]}s`
+  return sorted.map(w => COMBO_LETTER[w]).join('')
+}
+
+function recurringTimeInput(r: Recurrence): string {
+  if (!r.start) return ''
+  if (r.end) return `${r.start}-${r.end}`
+  return r.start
+}
+
+function todoDateInput(due: string): string {
+  const today = todayISO()
+  const d = diffDays(due, today)
+  if (d === 0) return 'today'
+  if (d === 1) return 'tomorrow'
+  return due
+}
+
+function eqDays(a: Weekday[], b: Weekday[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+// — preview helpers —
+
+function recurrencePreview(r: Recurrence): string {
+  const days = recurrenceShort(r)
+  const time = timePreview(r.start, r.end)
+  return [days, time].filter(Boolean).join(' · ')
+}
+
+function timePreview(start?: string, end?: string): string {
+  if (!start) return ''
+  if (end) return `${start}–${end}`
+  return start
+}
+
+function duePreview(due: string | null | undefined): string {
   if (!due) return 'no date'
   const today = todayISO()
   const d = diffDays(due, today)
@@ -314,53 +511,4 @@ function formatDuePreview(due: string | null): string {
   const day = date.getDate()
   if (date.getFullYear() === new Date().getFullYear()) return `${m} ${day}`
   return `${m} ${day} ${date.getFullYear()}`
-}
-
-function formatDaysPreview(rec: Recurrence): string {
-  if (rec.daily) return 'daily'
-  if (rec.days && rec.days.length > 0) return rec.days.map(d => DAY_SHORT[d]).join(' ')
-  return 'no days'
-}
-
-function formatTimeRangePreview(rec: Recurrence): string {
-  if (rec.start && rec.end) return `${rec.start}–${rec.end}`
-  if (rec.start) return rec.start
-  return ''
-}
-
-/**
- * Render a schedule back into editable text for the Edit modal.
- * Inverse of parseSchedule for round-tripping.
- */
-export function scheduleToInput(p: ParsedSchedule | null): string {
-  if (!p) return ''
-  if (p.kind === 'todo') {
-    if (!p.due) return ''
-    const datePart = scheduleDateToken(p.due)
-    if (!p.time) return datePart
-    const timePart = p.endTime ? `${p.time}-${p.endTime}` : p.time
-    return `${datePart} ${timePart}`
-  }
-  // recurring (used only when caller wants the full thing; Edit recurring uses parseTimeRange separately)
-  const days = p.recurrence.daily ? 'daily' : (p.recurrence.days ?? []).map(d => DAY_SHORT[d][0]).join('')
-  const time = formatTimeRangePreview(p.recurrence).replace('–', '-')
-  return time ? `${days} ${time}` : days
-}
-
-function scheduleDateToken(due: string): string {
-  const today = todayISO()
-  const d = diffDays(due, today)
-  if (d === 0) return 'today'
-  if (d === 1) return 'tomorrow'
-  return due
-}
-
-/**
- * Build a time-range input string from a Recurrence's start/end.
- */
-export function timeRangeToInput(rec: Recurrence | undefined): string {
-  if (!rec) return ''
-  if (rec.start && rec.end) return `${rec.start}-${rec.end}`
-  if (rec.start) return rec.start
-  return ''
 }

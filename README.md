@@ -12,25 +12,32 @@ npm run dist     # build a packaged .dmg
 
 ## capture syntax (⌘K)
 
+natural language goes through [chrono](https://github.com/wanasit/chrono) by default — no prefix.
+
 ```
-today: write report                   todo due today
-fri: 331 hw3                          todo due next friday
-2026-05-12: pay rent                  todo on a specific date
-today 14:00-15:00 deep work           one-off block of time
-mwf 10:00-11:00 lecture               recurring (mon/wed/fri)
-daily 08:00 stretch                   recurring every day
-someday: read more books              inbox / no date
+today write report                    todo due today
+next friday call mom                  todo, chrono parses the date phrase
+2026-05-12 pay rent                   todo on a specific date
+tomorrow at 2pm meeting               todo due tomorrow at 14:00
+may 6 at noon doctor appt             chrono natural-language
+
+every friday at 10 yoga               recurring fri at 10:00
+mondays and wednesdays 09:00-10:00 standup
+mwf 10:00-11:00 lecture               recurring shortcut (mon/wed/fri)
+daily at 8 stretch                    recurring every day at 08:00
+every weekday at 9 standup            recurring mon-fri
+every weekend brunch                  recurring sat/sun
+mon, wed, fri at noon lunch           comma/slash lists also work
+
 note: random thought                  note
-write report                          bare → inbox
-!may 6 at noon doctor appt            chrono natural-language
-!next friday call mom                 chrono natural-language
+random idea                           bare → inbox (no schedule)
 ```
 
-day combos use single letters: `m t w r f s u` (r = thursday, u = sunday). e.g. `tr` = tue+thu.
+day combos use single letters: `m t w r f s u` (r = thursday, u = sunday). e.g. `tr` = tue+thu. combos require 2+ letters; a single weekday word (`monday`) parses as a one-off via chrono — use the plural form (`mondays`) or `every monday` to mean recurring.
 
-the colon after a date keyword is optional (`today write report` works too). a trailing `*recurring` marker after a recurring time is also accepted but not required.
+time forms accepted: `10:00`, `10:00-11:00`, `at 10`, `at 10am`, `at 10:30pm`, `at noon`, `at midnight`, `from 10 to 11`, `10am-11am`.
 
-a leading `!` routes the rest through [chrono](https://github.com/wanasit/chrono) for natural-language dates and times. the matched phrase becomes the schedule, and whatever's left becomes the title.
+`every other`, `every 2 weeks`, monthly/yearly anchors, and "until X" bounds aren't supported.
 
 ## keys
 

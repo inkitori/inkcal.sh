@@ -1,18 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
-import { WEEKDAYS } from '@/../shared/types'
-import type { Recurrence, Task, Weekday } from '@/../shared/types'
-import {
-  parseSchedule,
-  parseTimeRange,
-  scheduleToInput,
-  timeRangeToInput
-} from '@/lib/parser'
+import type { Task } from '@/../shared/types'
+import { parseScheduleOnly, scheduleOnlyToInput, previewSchedule } from '@/lib/parser'
 import ScheduleInput from './ScheduleInput'
-
-const DAY_LABEL: Record<Weekday, string> = {
-  mon: 'm', tue: 't', wed: 'w', thu: 't', fri: 'f', sat: 's', sun: 's'
-}
 
 export default function Edit() {
   const open = useStore(s => s.editOpen)
@@ -27,10 +17,7 @@ export default function Edit() {
   )
 
   const [title, setTitle] = useState('')
-  const [schedule, setSchedule] = useState<string>('')
-  const [timeRange, setTimeRange] = useState<string>('')
-  const [days, setDays] = useState<Set<Weekday>>(new Set())
-  const [daily, setDaily] = useState(false)
+  const [when, setWhen] = useState('')
   const [error, setError] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const submitRef = useRef<() => void>(() => {})
@@ -38,21 +25,8 @@ export default function Edit() {
   useEffect(() => {
     if (!open || !task) return
     setTitle(task.title ?? task.body ?? '')
+    setWhen(scheduleOnlyToInput(task))
     setError(null)
-    if (task.kind === 'todo') {
-      setSchedule(scheduleToInput({ kind: 'todo', due: task.due ?? null, time: task.time, endTime: task.endTime }))
-    } else {
-      setSchedule('')
-    }
-    if (task.kind === 'recurring') {
-      setTimeRange(timeRangeToInput(task.recurrence))
-      setDays(new Set(task.recurrence?.days ?? []))
-      setDaily(!!task.recurrence?.daily)
-    } else {
-      setTimeRange('')
-      setDays(new Set())
-      setDaily(false)
-    }
     requestAnimationFrame(() => titleRef.current?.focus())
   }, [open, task])
 
@@ -76,71 +50,69 @@ export default function Edit() {
 
   function submit() {
     if (!task) return
-    const patch: Partial<Task> = {}
     const trimmed = title.trim()
+    const patch: Partial<Task> = {}
     if (trimmed.length > 0) {
       if (task.kind === 'note') patch.body = trimmed
       else patch.title = trimmed
     }
+
+    if (task.kind === 'note') {
+      updateTask(task.id, patch)
+      close()
+      return
+    }
+
+    const parsed = parseScheduleOnly(when)
+    if (!parsed) {
+      setError('couldn’t parse that')
+      return
+    }
+
     if (task.kind === 'todo') {
-      const sched = schedule.trim()
-      if (!sched) {
+      if (parsed.kind === 'recurring') {
+        // converting todo → recurring
+        patch.kind = 'recurring'
+        patch.recurrence = parsed.recurrence
         patch.due = null
         patch.time = undefined
         patch.endTime = undefined
-      } else {
-        const parsed = parseSchedule(sched)
-        if (!parsed || parsed.kind !== 'todo') {
-          setError('couldn’t parse that')
-          return
-        }
+      } else if (parsed.kind === 'todo') {
         patch.due = parsed.due
         patch.time = parsed.time
         patch.endTime = parsed.endTime
+      } else {
+        // inbox
+        patch.due = null
+        patch.time = undefined
+        patch.endTime = undefined
+      }
+    } else if (task.kind === 'recurring') {
+      if (parsed.kind === 'recurring') {
+        patch.recurrence = parsed.recurrence
+      } else if (parsed.kind === 'todo') {
+        // converting recurring → todo
+        patch.kind = 'todo'
+        patch.recurrence = undefined
+        patch.due = parsed.due
+        patch.time = parsed.time
+        patch.endTime = parsed.endTime
+      } else {
+        // inbox: recurring task with empty schedule keeps its days but loses time?
+        // Simpler: convert to inbox todo.
+        patch.kind = 'todo'
+        patch.recurrence = undefined
+        patch.due = null
+        patch.time = undefined
+        patch.endTime = undefined
       }
     }
-    if (task.kind === 'recurring') {
-      const rec: Recurrence = {}
-      if (daily) rec.daily = true
-      else if (days.size > 0) rec.days = WEEKDAYS.filter(d => days.has(d))
-      const tr = timeRange.trim()
-      if (tr) {
-        const parsed = parseTimeRange(tr)
-        if (!parsed) {
-          setError('couldn’t parse time')
-          return
-        }
-        if (parsed.start) rec.start = parsed.start
-        if (parsed.end) rec.end = parsed.end
-      }
-      patch.recurrence = rec
-    }
+
     updateTask(task.id, patch)
     close()
   }
 
   submitRef.current = submit
-
-  function toggleDay(d: Weekday) {
-    setDays(prev => {
-      const next = new Set(prev)
-      if (next.has(d)) next.delete(d)
-      else next.add(d)
-      return next
-    })
-    setDaily(false)
-  }
-
-  function applyDateKeyword(keyword: 'today' | 'tomorrow') {
-    const parsed = parseSchedule(schedule.trim())
-    if (parsed?.kind === 'todo' && parsed.time) {
-      const timePart = parsed.endTime ? `${parsed.time}-${parsed.endTime}` : parsed.time
-      setSchedule(`${keyword} ${timePart}`)
-    } else {
-      setSchedule(keyword)
-    }
-    setError(null)
-  }
 
   return (
     <div
@@ -167,73 +139,18 @@ export default function Edit() {
             />
           </Field>
 
-          {task.kind === 'todo' && (
+          {task.kind !== 'note' && (
             <FieldTop label="when">
-              <div className="flex items-start gap-2">
-                <ScheduleInput
-                  mode="schedule"
-                  value={schedule}
-                  onChange={(v) => { setSchedule(v); setError(null) }}
-                  placeholder="e.g. today 10:00, fri 14:00, 2026-05-12, !may 6 at noon"
-                  className="flex-1 flex flex-col gap-1"
-                  inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
-                  inputStyle={{ color: 'var(--text)' }}
-                />
-                <Pill onClick={() => applyDateKeyword('today')}>today</Pill>
-                <Pill onClick={() => applyDateKeyword('tomorrow')}>tomorrow</Pill>
-                {schedule && <Pill onClick={() => { setSchedule(''); setError(null) }}>clear</Pill>}
-              </div>
+              <ScheduleInput
+                value={when}
+                onChange={(v) => { setWhen(v); setError(null) }}
+                preview={previewSchedule}
+                placeholder="e.g. today 10:00, every friday at 14, mwf 10-11, may 12"
+                className="flex-1 flex flex-col gap-1"
+                inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
+                inputStyle={{ color: 'var(--text)' }}
+              />
             </FieldTop>
-          )}
-
-          {task.kind === 'recurring' && (
-            <>
-              <Field label="days">
-                <div className="flex items-center gap-1.5">
-                  {WEEKDAYS.map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => toggleDay(d)}
-                      className="w-7 h-7 rounded-md font-mono text-[12px] uppercase"
-                      style={{
-                        background: days.has(d) && !daily ? 'var(--accent)' : 'transparent',
-                        color: days.has(d) && !daily ? 'var(--bg)' : 'var(--text)',
-                        border: '1px solid var(--border)'
-                      }}
-                    >
-                      {DAY_LABEL[d]}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDaily(!daily)
-                      if (!daily) setDays(new Set())
-                    }}
-                    className="ml-2 h-7 px-2.5 rounded-md font-mono text-[12px] uppercase"
-                    style={{
-                      background: daily ? 'var(--accent)' : 'transparent',
-                      color: daily ? 'var(--bg)' : 'var(--text)',
-                      border: '1px solid var(--border)'
-                    }}
-                  >
-                    daily
-                  </button>
-                </div>
-              </Field>
-              <FieldTop label="time">
-                <ScheduleInput
-                  mode="time-range"
-                  value={timeRange}
-                  onChange={(v) => { setTimeRange(v); setError(null) }}
-                  placeholder="e.g. 10:00 or 10:00-11:00"
-                  className="flex flex-col gap-1"
-                  inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
-                  inputStyle={{ color: 'var(--text)' }}
-                />
-              </FieldTop>
-            </>
           )}
         </div>
 
@@ -267,18 +184,5 @@ function FieldTop({ label, children }: { label: string; children: React.ReactNod
       </span>
       <div className="flex-1">{children}</div>
     </div>
-  )
-}
-
-function Pill({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="px-2.5 py-1 rounded-md font-mono text-[11px] uppercase"
-      style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-    >
-      {children}
-    </button>
   )
 }
