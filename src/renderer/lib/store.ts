@@ -26,6 +26,8 @@ interface State {
   capturePrefill: string
   editOpen: boolean
   editTaskId: string | null
+  searchOpen: boolean
+  pendingSelectId: string | null
   undoStack: UndoEntry[]
 
   /** init/persistence */
@@ -41,6 +43,9 @@ interface State {
   closeCapture: () => void
   openEdit: (id: string) => void
   closeEdit: () => void
+  openSearch: () => void
+  closeSearch: () => void
+  setPendingSelectId: (id: string | null) => void
 
   /** mutations */
   addTask: (t: Task) => void
@@ -82,6 +87,8 @@ export const useStore = create<State>((set, get) => ({
   capturePrefill: '',
   editOpen: false,
   editTaskId: null,
+  searchOpen: false,
+  pendingSelectId: null,
   undoStack: [],
 
   async init() {
@@ -116,12 +123,15 @@ export const useStore = create<State>((set, get) => ({
     set(s => ({ view: v, settings: { ...s.settings, lastView: v } }))
     persist(get)
   },
-  openPalette() { set({ paletteOpen: true, captureOpen: false, editOpen: false }) },
+  openPalette() { set({ paletteOpen: true, captureOpen: false, editOpen: false, searchOpen: false }) },
   closePalette() { set({ paletteOpen: false }) },
-  openCapture(prefill = '') { set({ captureOpen: true, paletteOpen: false, editOpen: false, capturePrefill: prefill }) },
+  openCapture(prefill = '') { set({ captureOpen: true, paletteOpen: false, editOpen: false, searchOpen: false, capturePrefill: prefill }) },
   closeCapture() { set({ captureOpen: false, capturePrefill: '' }) },
-  openEdit(id) { set({ editOpen: true, editTaskId: id, captureOpen: false, paletteOpen: false }) },
+  openEdit(id) { set({ editOpen: true, editTaskId: id, captureOpen: false, paletteOpen: false, searchOpen: false }) },
   closeEdit() { set({ editOpen: false, editTaskId: null }) },
+  openSearch() { set({ searchOpen: true, paletteOpen: false, captureOpen: false, editOpen: false }) },
+  closeSearch() { set({ searchOpen: false }) },
+  setPendingSelectId(id) { set({ pendingSelectId: id }) },
 
   addTask(t) {
     set(s => ({ tasks: [...s.tasks, t] }))
@@ -140,7 +150,7 @@ export const useStore = create<State>((set, get) => ({
     set({
       tasks: s.tasks.filter(t => t.id !== id),
       completions: s.completions.filter(c => c.taskId !== id),
-      undoStack: [...s.undoStack, entry]
+      undoStack: [...s.undoStack, entry].slice(-100)
     })
     persist(get)
   },

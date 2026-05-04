@@ -25,6 +25,15 @@ export default function NotesView() {
     })
   }, [renamingId])
 
+  const pendingSelectId = useStore(s => s.pendingSelectId)
+  const setPendingSelectId = useStore(s => s.setPendingSelectId)
+  useEffect(() => {
+    if (!pendingSelectId) return
+    const idx = notes.findIndex(n => n.id === pendingSelectId)
+    if (idx >= 0) setSelected(idx)
+    setPendingSelectId(null)
+  }, [pendingSelectId, notes, setPendingSelectId])
+
   useListKeymap({
     onMove: (d) => {
       if (!notes.length) return

@@ -3,6 +3,7 @@ import Header from './components/Header'
 import Capture from './components/Capture'
 import Edit from './components/Edit'
 import Palette from './components/Palette'
+import Search from './components/Search'
 import UndoToast from './components/UndoToast'
 import TodoView from './views/TodoView'
 import CalendarView from './views/CalendarView'
@@ -72,6 +73,7 @@ export default function App() {
       <Capture />
       <Edit />
       <Palette themes={themes} reloadThemes={reloadThemes} />
+      <Search />
       <UndoToast />
     </div>
   )

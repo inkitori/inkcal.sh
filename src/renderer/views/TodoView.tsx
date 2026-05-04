@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   useStore,
   selectInboxTodos,
@@ -95,6 +95,15 @@ export default function TodoView() {
   }, [overdue, todayRecurring, todayTodos, upcoming, inbox, recurringOffSchedule, completions, today])
 
   const safeIdx = Math.min(selected, Math.max(0, rows.length - 1))
+
+  const pendingSelectId = useStore(s => s.pendingSelectId)
+  const setPendingSelectId = useStore(s => s.setPendingSelectId)
+  useEffect(() => {
+    if (!pendingSelectId) return
+    const idx = rows.findIndex(r => r.task.id === pendingSelectId)
+    if (idx >= 0) setSelected(idx)
+    setPendingSelectId(null)
+  }, [pendingSelectId, rows, setPendingSelectId])
 
   useListKeymap({
     onMove: (delta) => {

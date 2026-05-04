@@ -21,8 +21,6 @@ export default function UndoToast() {
 
   if (!top || visibleId !== top.id) return null
 
-  const more = undoStack.length - 1
-
   return (
     <div
       className="fixed bottom-6 left-1/2 -translate-x-1/2 fade-in rounded-md px-3 py-2 flex items-center gap-3 font-mono text-[11px]"
@@ -30,7 +28,6 @@ export default function UndoToast() {
     >
       <span>deleted "{top.task.title ?? top.task.body ?? '...'}"</span>
       <button onClick={restore} style={{ color: 'var(--accent)' }}>u undo</button>
-      {more > 0 && <span style={{ color: 'var(--muted-2)' }}>+{more}</span>}
     </div>
   )
 }

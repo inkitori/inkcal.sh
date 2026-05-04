@@ -31,14 +31,15 @@ export function isInTextInput(target: EventTarget | null): boolean {
  * suppress when typing in an input. `paletteOpen`/`captureOpen` short-circuit.
  */
 export function useListKeymap(handlers: ListKeyHandlers): void {
-  const { paletteOpen, captureOpen, editOpen } = useStore(s => ({
+  const { paletteOpen, captureOpen, editOpen, searchOpen } = useStore(s => ({
     paletteOpen: s.paletteOpen,
     captureOpen: s.captureOpen,
-    editOpen: s.editOpen
+    editOpen: s.editOpen,
+    searchOpen: s.searchOpen
   }))
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (paletteOpen || captureOpen || editOpen) return
+      if (paletteOpen || captureOpen || editOpen || searchOpen) return
       if (isInTextInput(e.target)) return
       if (e.metaKey || e.ctrlKey) return
 
@@ -84,7 +85,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [handlers, paletteOpen, captureOpen, editOpen])
+  }, [handlers, paletteOpen, captureOpen, editOpen, searchOpen])
 }
 
 /** Global keymap for app-level shortcuts: cmd+1/2/3, cmd+k, cmd+p */
@@ -108,9 +109,9 @@ export function useGlobalKeymap(): void {
       if (meta && e.key === '2') { e.preventDefault(); s.setView('calendar'); return }
       if (meta && e.key === '3') { e.preventDefault(); s.setView('notes'); return }
 
-      // unprefixed `/` opens capture, `n` opens capture pre-filled with note:
-      if (!meta && !isInTextInput(e.target) && !s.paletteOpen && !s.captureOpen) {
-        if (e.key === '/') { e.preventDefault(); s.openCapture(); return }
+      // unprefixed `/` opens search, `n` opens capture pre-filled with note:
+      if (!meta && !isInTextInput(e.target) && !s.paletteOpen && !s.captureOpen && !s.searchOpen) {
+        if (e.key === '/') { e.preventDefault(); s.openSearch(); return }
         if (e.key === 'n') {
           // 'n' inside notes view = new note; we handle that view-locally too.
           // Letting it propagate is fine; this branch handles global "from anywhere → new note":
@@ -130,6 +131,7 @@ export function useGlobalKeymap(): void {
         if (s.paletteOpen) s.closePalette()
         else if (s.captureOpen) s.closeCapture()
         else if (s.editOpen) s.closeEdit()
+        else if (s.searchOpen) s.closeSearch()
       }
     }
     window.addEventListener('keydown', onKey)
