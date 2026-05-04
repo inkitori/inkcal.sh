@@ -223,7 +223,8 @@ interface RecurringMatch {
   title: string
 }
 
-function tryRecurring(input: string, requireTitle: boolean): RecurringMatch | null {
+function tryRecurring(rawInput: string, requireTitle: boolean): RecurringMatch | null {
+  const input = expandTomorrowShortcut(rawInput)
   // Reject "every other …" (no data-model support for intervals).
   if (/^every\s+other\b/i.test(input)) return null
 
@@ -447,8 +448,12 @@ function expandLeadingDayShortcut(input: string): string {
   return long + ' ' + input.slice(m[0].length)
 }
 
+function expandTomorrowShortcut(input: string): string {
+  return input.replace(/\btmr\b/gi, 'tomorrow')
+}
+
 function tryChrono(input: string, requireTitle: boolean): ChronoMatch | null {
-  const expanded = expandLeadingDayShortcut(input)
+  const expanded = expandTomorrowShortcut(expandLeadingDayShortcut(input))
   const results = chrono.parse(expanded, new Date(), { forwardDate: true })
   if (results.length === 0) return null
   const r = results[0]
