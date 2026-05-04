@@ -16,12 +16,15 @@ interface Props {
   onRenameCancel?: () => void
   showDue?: boolean
   showTime?: boolean
+  hideCheckbox?: boolean
+  recurrenceLabel?: string
 }
 
 export default function TaskRow({
   task, isCompleted, isSelected, isOverdue, isRenaming,
   onToggle, onClick, onRenameSubmit, onRenameCancel,
-  showDue = true, showTime = true
+  showDue = true, showTime = true,
+  hideCheckbox = false, recurrenceLabel
 }: Props) {
   const titleStyle: React.CSSProperties = {
     color: isCompleted ? 'var(--muted)' : 'var(--text)',
@@ -56,7 +59,7 @@ export default function TaskRow({
         outline: isSelected ? `1px solid var(--border)` : 'none'
       }}
     >
-      <Checkbox checked={isCompleted} onClick={onToggle} />
+      {!hideCheckbox && <Checkbox checked={isCompleted} onClick={onToggle} />}
       {isRenaming ? (
         <input
           ref={inputRef}
@@ -90,6 +93,7 @@ export default function TaskRow({
       )}
       <span className="font-mono text-[10px] flex items-center gap-2 shrink-0" style={{ color: 'var(--muted)' }}>
         {showTime && time && <span>@{time}</span>}
+        {recurrenceLabel && <span style={{ color: 'var(--muted-2)' }}>{recurrenceLabel}</span>}
         {label && (
           <span style={{ color: isOverdue ? 'var(--danger)' : 'var(--accent)' }}>{label}</span>
         )}

@@ -49,6 +49,8 @@ the `*recurring` marker after the time is optional.
 | u         | undo last delete      |
 | o         | new todo for today    |
 | n         | new note (notes view) |
+| i         | rename selected (inline) |
+| e         | edit properties (todo view) |
 | gg / G    | top / bottom          |
 | Esc       | blur input            |
 

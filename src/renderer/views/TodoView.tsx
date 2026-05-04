@@ -3,15 +3,16 @@ import {
   useStore,
   selectInboxTodos,
   selectOverdueTodos,
+  selectRecurring,
   selectTodayTodos,
   selectUpcomingTodos
 } from '@/lib/store'
 import { instancesForDate } from '@/lib/recurrence'
-import { todayISO } from '@/lib/date'
+import { todayISO, weekdayOf } from '@/lib/date'
 import Section from '@/components/Section'
 import TaskRow from '@/components/TaskRow'
 import { useListKeymap } from '@/lib/keymap'
-import type { Task } from '@/../shared/types'
+import type { Recurrence, Task, Weekday } from '@/../shared/types'
 
 interface Row {
   task: Task
@@ -19,6 +20,19 @@ interface Row {
   isCompleted: boolean
   isOverdue?: boolean
   showDue?: boolean
+  scheduleOnly?: boolean
+  recurrenceLabel?: string
+}
+
+const DAY_SHORT: Record<Weekday, string> = {
+  mon: 'm', tue: 't', wed: 'w', thu: 'r', fri: 'f', sat: 's', sun: 'u'
+}
+
+function recurrenceShort(r: Recurrence | undefined): string {
+  if (!r) return ''
+  if (r.daily) return 'daily'
+  if (r.days?.length) return r.days.map(d => DAY_SHORT[d]).join('')
+  return ''
 }
 
 export default function TodoView() {
@@ -40,6 +54,16 @@ export default function TodoView() {
   const upcoming = useMemo(() => selectUpcomingTodos({ tasks, completions } as any), [tasks, completions])
   const inbox = useMemo(() => selectInboxTodos({ tasks, completions } as any), [tasks, completions])
   const todayRecurring = useMemo(() => instancesForDate(tasks, completions, today), [tasks, completions, today])
+  const recurringOffSchedule = useMemo(() => {
+    const wd = weekdayOf(today)
+    return selectRecurring({ tasks, completions } as any).filter(t => {
+      const r = t.recurrence
+      if (!r) return false
+      if (r.daily) return false
+      if (r.days?.includes(wd)) return false
+      return true
+    }).sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
+  }, [tasks, completions, today])
 
   const rows: Row[] = useMemo(() => {
     const r: Row[] = []
@@ -57,8 +81,18 @@ export default function TodoView() {
       const completed = completions.some(c => c.taskId === t.id)
       r.push({ task: t, date: today, isCompleted: completed, showDue: false })
     }
+    for (const t of recurringOffSchedule) {
+      r.push({
+        task: t,
+        date: today,
+        isCompleted: false,
+        showDue: false,
+        scheduleOnly: true,
+        recurrenceLabel: recurrenceShort(t.recurrence)
+      })
+    }
     return r
-  }, [overdue, todayRecurring, todayTodos, upcoming, inbox, completions, today])
+  }, [overdue, todayRecurring, todayTodos, upcoming, inbox, recurringOffSchedule, completions, today])
 
   const safeIdx = Math.min(selected, Math.max(0, rows.length - 1))
 
@@ -74,7 +108,7 @@ export default function TodoView() {
     onBottom: () => setSelected(Math.max(0, rows.length - 1)),
     onToggle: () => {
       const row = rows[safeIdx]
-      if (!row) return
+      if (!row || row.scheduleOnly) return
       toggle(row.task.id, row.date)
     },
     onDelete: () => {
@@ -117,7 +151,9 @@ export default function TodoView() {
           isRenaming={row.task.id === renamingId}
           showDue={row.showDue}
           showTime
-          onToggle={() => toggle(row.task.id, row.date)}
+          hideCheckbox={row.scheduleOnly}
+          recurrenceLabel={row.recurrenceLabel}
+          onToggle={row.scheduleOnly ? undefined : () => toggle(row.task.id, row.date)}
           onClick={() => setSelected(idx)}
           onRenameSubmit={(text) => {
             updateTask(row.task.id, { title: text })
@@ -129,9 +165,10 @@ export default function TodoView() {
     })
 
   const overdueRows = rows.filter(r => r.isOverdue)
-  const todayRows = rows.filter(r => !r.isOverdue && r.date === today && (r.task.due === today || r.task.kind === 'recurring'))
+  const todayRows = rows.filter(r => !r.isOverdue && !r.scheduleOnly && r.date === today && (r.task.due === today || r.task.kind === 'recurring'))
   const upcomingRows = rows.filter(r => r.task.kind === 'todo' && r.task.due && r.task.due > today)
   const inboxRows = rows.filter(r => r.task.kind === 'todo' && (r.task.due === null || r.task.due === undefined))
+  const recurringRows = rows.filter(r => r.scheduleOnly)
 
   return (
     <div className="px-6 py-5 max-w-[760px] mx-auto fade-in">
@@ -153,6 +190,11 @@ export default function TodoView() {
       {inboxRows.length > 0 && (
         <Section title="inbox" count={inboxRows.length}>
           {(() => { const out = renderRows(inboxRows); cursor += inboxRows.length; return out })()}
+        </Section>
+      )}
+      {recurringRows.length > 0 && (
+        <Section title="recurring" count={recurringRows.length}>
+          {(() => { const out = renderRows(recurringRows); cursor += recurringRows.length; return out })()}
         </Section>
       )}
     </div>
