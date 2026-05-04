@@ -14,12 +14,14 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "package": "electron-vite build && electron-builder --dir",
-    "dist": "electron-vite build && electron-builder"
+    "dist": "electron-vite build && electron-builder",
+    "release": "./scripts/release.sh"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
     "chrono-node": "^2.7.7",
+    "electron-updater": "^6.8.3",
     "fuse.js": "^7.0.0",
     "nanoid": "^5.0.7",
     "zustand": "^4.5.4"
@@ -41,7 +43,10 @@
     "vite": "^5.3.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron", "esbuild"]
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
   },
   "build": {
     "appId": "sh.inkcal.app",
@@ -60,8 +65,16 @@
       }
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.productivity"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "inkitori",
+      "repo": "inkcal.sh"
     }
   }
 }

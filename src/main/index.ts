@@ -5,6 +5,7 @@ import { registerIpc } from './ipc'
 import { loadData } from './storage'
 import { loadThemes, getTheme } from './themes'
 import { registerGlobalHotkey, unregisterAll } from './shortcuts'
+import { initAutoUpdater } from './updater'
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -36,6 +37,7 @@ if (!gotLock) {
 
     registerIpc()
     registerGlobalHotkey(data.settings.globalHotkey || 'Cmd+Shift+Space')
+    initAutoUpdater()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow({ transparency: useTransparency })

@@ -7,8 +7,27 @@ vim driven ez todo list
 ```sh
 npm install
 npm run dev      # dev with HMR
-npm run dist     # build a packaged .dmg
+npm run dist     # build a packaged .dmg locally
 ```
+
+## install / release
+
+once you've cut a build, drag `release/mac-arm64/inkcal.sh.app` into `/Applications` and launch it from spotlight/raycast/finder. data lives in `~/Library/Application Support/inkcal-sh/data.json` and persists across dev runs and packaged builds.
+
+to cut a new version + auto-publish to GitHub releases:
+
+```sh
+npm run release             # patch bump (0.1.0 -> 0.1.1)
+npm run release minor       # minor bump
+npm run release 1.2.3       # explicit version
+npm run release -- --local  # build + install locally, no git/publish
+```
+
+requires `gh` to be authenticated (`gh auth login`). the script bumps `package.json`, builds, uploads the dmg+zip+`latest-mac.yml` to a GitHub release, copies the new `.app` into `/Applications`, then commits and pushes the tag.
+
+installed copies check `inkitori/inkcal.sh` releases on launch and every 6h via [`electron-updater`](https://www.electron.build/auto-update). updates download in the background and apply on next quit.
+
+note: builds are unsigned (ad-hoc signed only). first launch macOS will say "unidentified developer" — right-click → open → open. unsigned + auto-updating works for personal use; for distribution to others, get an apple developer cert and add `signtool`/notarization to the release script.
 
 ## capture syntax (⌘K)
 
@@ -50,7 +69,7 @@ time forms accepted: `10:00`, `10:00-11:00`, `at 10`, `at 10am`, `at 10:30pm`, `
 | ⌘P       | command palette                     |
 | /        | search                              |
 | u        | undo last delete                    |
-| ⌥Space   | toggle window from anywhere         |
+| ⌘⇧Space  | toggle window from anywhere         |
 | Esc      | close any open overlay              |
 
 **todo & notes lists**
