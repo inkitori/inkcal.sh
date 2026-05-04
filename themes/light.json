@@ -1,0 +1,20 @@
+{
+  "name": "light",
+  "vars": {
+    "--bg": "#f7f5f1",
+    "--bg-2": "#efece6",
+    "--bg-3": "#e6e2da",
+    "--border": "#d8d2c6",
+    "--border-2": "#c5beb0",
+    "--text": "#2a2723",
+    "--muted": "#7d766a",
+    "--muted-2": "#a59c8d",
+    "--accent": "#a06a3a",
+    "--accent-soft": "#a06a3a20",
+    "--accent-softer": "#a06a3a10",
+    "--danger": "#a64236",
+    "--danger-soft": "#a6423620",
+    "--success": "#5a7a52"
+  },
+  "transparency": { "enabled": false }
+}

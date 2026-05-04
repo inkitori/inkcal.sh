@@ -1,0 +1,20 @@
+{
+  "name": "pink",
+  "vars": {
+    "--bg": "#1a0d14",
+    "--bg-2": "#241019",
+    "--bg-3": "#2d1422",
+    "--border": "#3a1c2c",
+    "--border-2": "#4a2438",
+    "--text": "#f4d4e0",
+    "--muted": "#a87a8d",
+    "--muted-2": "#7a5567",
+    "--accent": "#e89bb8",
+    "--accent-soft": "#e89bb820",
+    "--accent-softer": "#e89bb810",
+    "--danger": "#c97064",
+    "--danger-soft": "#c9706420",
+    "--success": "#a8c39a"
+  },
+  "transparency": { "enabled": true, "vibrancy": "under-window", "alpha": 0.85 }
+}

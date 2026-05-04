@@ -1,0 +1,20 @@
+{
+  "name": "dark",
+  "vars": {
+    "--bg": "#111113",
+    "--bg-2": "#17171a",
+    "--bg-3": "#1d1d21",
+    "--border": "#26262b",
+    "--border-2": "#34343a",
+    "--text": "#e8e6e3",
+    "--muted": "#737373",
+    "--muted-2": "#565659",
+    "--accent": "#d4a574",
+    "--accent-soft": "#d4a57420",
+    "--accent-softer": "#d4a57410",
+    "--danger": "#c97064",
+    "--danger-soft": "#c9706420",
+    "--success": "#8ba888"
+  },
+  "transparency": { "enabled": false }
+}
