@@ -1,6 +1,6 @@
 {
   "name": "inkcal-sh",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "minimalist todo + calendar",
   "main": "out/main/index.js",
   "author": "enyouki",
