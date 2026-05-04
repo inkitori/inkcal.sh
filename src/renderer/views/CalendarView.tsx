@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { instancesForDate } from '@/lib/recurrence'
+import { isInTextInput } from '@/lib/keymap'
 import {
   addDays,
   fmtHour,
@@ -10,8 +11,8 @@ import {
 } from '@/lib/date'
 import type { Task } from '@/../shared/types'
 
-const HOUR_PX_WEEK = 44
-const HOUR_PX_DAY = 64
+const HOUR_PX_WEEK = 36
+const HOUR_PX_DAY = 52
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const WEEKDAY_LABEL = ['mon','tue','wed','thu','fri','sat','sun']
 
@@ -83,6 +84,27 @@ export default function CalendarView() {
     const t = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(t)
   }, [])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const s = useStore.getState()
+      if (s.paletteOpen || s.captureOpen || s.editOpen) return
+      if (isInTextInput(e.target)) return
+      if (e.metaKey || e.ctrlKey) return
+      const k = e.key
+      if (k === 'h' || k === 'ArrowLeft') {
+        e.preventDefault(); setAnchor(a => addDays(a, mode === 'week' ? -7 : -1)); return
+      }
+      if (k === 'l' || k === 'ArrowRight') {
+        e.preventDefault(); setAnchor(a => addDays(a, mode === 'week' ? 7 : 1)); return
+      }
+      if (k === 't') { e.preventDefault(); setAnchor(todayISO()); return }
+      if (k === 'd') { e.preventDefault(); setMode('day'); return }
+      if (k === 'w') { e.preventDefault(); setMode('week'); return }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mode])
   const currentMin = now.getHours() * 60 + now.getMinutes()
 
   const allBlocks = useMemo(
