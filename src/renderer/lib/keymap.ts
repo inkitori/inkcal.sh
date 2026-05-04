@@ -120,7 +120,7 @@ export function useGlobalKeymap(): void {
             s.openCapture('note: ')
           }
         }
-        if (e.key === 'u' && s.undo) {
+        if (e.key === 'u' && s.undoStack.length > 0) {
           e.preventDefault()
           s.restoreUndo()
         }

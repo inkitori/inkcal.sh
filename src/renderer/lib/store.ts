@@ -5,9 +5,10 @@ import { DEFAULT_DATA } from '@/../shared/types'
 import { todayISO, addDays, isBefore } from './date'
 
 interface UndoEntry {
+  id: string
   task: Task
   completions: Completion[]
-  expiresAt: number
+  deletedAt: number
 }
 
 type ViewName = 'todo' | 'calendar' | 'notes'
@@ -25,7 +26,7 @@ interface State {
   capturePrefill: string
   editOpen: boolean
   editTaskId: string | null
-  undo: UndoEntry | null
+  undoStack: UndoEntry[]
 
   /** init/persistence */
   init: () => Promise<void>
@@ -81,7 +82,7 @@ export const useStore = create<State>((set, get) => ({
   capturePrefill: '',
   editOpen: false,
   editTaskId: null,
-  undo: null,
+  undoStack: [],
 
   async init() {
     const data = await window.inkcal.loadData()
@@ -135,10 +136,11 @@ export const useStore = create<State>((set, get) => ({
     const task = s.tasks.find(t => t.id === id)
     if (!task) return
     const completions = s.completions.filter(c => c.taskId === id)
+    const entry: UndoEntry = { id: nanoid(), task, completions, deletedAt: Date.now() }
     set({
       tasks: s.tasks.filter(t => t.id !== id),
       completions: s.completions.filter(c => c.taskId !== id),
-      undo: { task, completions, expiresAt: Date.now() + 5000 }
+      undoStack: [...s.undoStack, entry]
     })
     persist(get)
   },
@@ -155,15 +157,16 @@ export const useStore = create<State>((set, get) => ({
   },
   restoreUndo() {
     const s = get()
-    if (!s.undo) return
+    if (s.undoStack.length === 0) return
+    const entry = s.undoStack[s.undoStack.length - 1]
     set({
-      tasks: [...s.tasks, s.undo.task],
-      completions: [...s.completions, ...s.undo.completions],
-      undo: null
+      tasks: [...s.tasks, entry.task],
+      completions: [...s.completions, ...entry.completions],
+      undoStack: s.undoStack.slice(0, -1)
     })
     persist(get)
   },
-  clearUndo() { set({ undo: null }) },
+  clearUndo() { set({ undoStack: [] }) },
 
   async setSettings(patch) {
     set(s => ({ settings: { ...s.settings, ...patch } }))
