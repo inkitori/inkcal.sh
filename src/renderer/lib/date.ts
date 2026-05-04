@@ -68,10 +68,6 @@ export function dueLabel(due: string | null | undefined): string | null {
   if (d === 0) return 'today'
   if (d === 1) return 'tomorrow'
   if (d === -1) return 'yesterday'
-  if (d > 1 && d <= 7) {
-    const wd = weekdayOf(due)
-    return wd
-  }
   if (d < 0) return `${-d}d overdue`
   if (d <= 30) return `${d}d`
   return due
