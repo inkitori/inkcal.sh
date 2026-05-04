@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { AppData, Completion, Settings, Task } from '@/../shared/types'
 import { DEFAULT_DATA } from '@/../shared/types'
-import { todayISO, addDays, isBefore } from './date'
+import { todayISO, isBefore } from './date'
 
 interface UndoEntry {
   id: string
@@ -216,9 +216,8 @@ export function selectTodayTodos(s: State): Task[] {
 
 export function selectUpcomingTodos(s: State): Task[] {
   const today = todayISO()
-  const horizon = addDays(today, 30)
   return s.tasks
-    .filter(t => t.kind === 'todo' && t.due && t.due > today && t.due <= horizon)
+    .filter(t => t.kind === 'todo' && t.due && t.due > today)
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))
 }
 
