@@ -3,6 +3,7 @@ import {
   parseCapture,
   parseSchedule,
   parseTimeRange,
+  parseChronoLeading,
   formatSchedule,
   type ParsedSchedule,
   type ParseResult
@@ -74,8 +75,19 @@ function previewFor(mode: Mode, raw: string): string {
   if (!trimmed) return ''
   if (mode === 'capture') {
     const result = parseCapture(trimmed)
-    if (!result) return ''
-    return formatCapturePreview(result)
+    if (result) return formatCapturePreview(result)
+    // partial chrono: show schedule even before the title is typed
+    if (trimmed.startsWith('!')) {
+      const rest = trimmed.slice(1).trim()
+      if (rest) {
+        const r = parseChronoLeading(rest)
+        if (r) {
+          const sched = formatSchedule(r.schedule)
+          return r.titleText ? `${sched} · ${r.titleText}` : sched
+        }
+      }
+    }
+    return ''
   }
   if (mode === 'schedule') {
     const result = parseSchedule(trimmed)
@@ -98,6 +110,11 @@ function formatCapturePreview(r: ParseResult): string {
   if (t.kind === 'recurring' && t.recurrence) {
     const sched: ParsedSchedule = { kind: 'recurring', recurrence: t.recurrence }
     return formatSchedule(sched)
+  }
+  // chrono path: show "schedule · title" so the boundary chrono drew is visible
+  if (r.prefix === 'chrono') {
+    const sched: ParsedSchedule = { kind: 'todo', due: t.due ?? null, time: t.time }
+    return `${formatSchedule(sched)} · ${t.title ?? ''}`
   }
   if (!t.due) return 'inbox'
   const sched: ParsedSchedule = { kind: 'todo', due: t.due, time: t.time }

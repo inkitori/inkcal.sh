@@ -1,6 +1,7 @@
 import type { Task, Recurrence, Weekday } from '@/../shared/types'
-import { addDays, todayISO, weekdayOf, fromISODate, diffDays } from './date'
+import { addDays, todayISO, weekdayOf, fromISODate, diffDays, toISODate } from './date'
 import { nanoid } from 'nanoid'
+import * as chrono from 'chrono-node'
 
 const DAY_PREFIXES: Record<string, Weekday> = {
   mon: 'mon', monday: 'mon',
@@ -51,6 +52,29 @@ function pad2(s: string): string {
 
 function stripColon(token: string): string {
   return token.replace(/:$/, '')
+}
+
+function toHHMM(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+}
+
+/**
+ * Run chrono on input that follows a leading `!`. Requires the parsed date phrase
+ * to start at index 0 — anything not matched by chrono becomes the title.
+ */
+export function parseChronoLeading(input: string): { schedule: ParsedSchedule; titleText: string } | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const results = chrono.parse(trimmed, new Date(), { forwardDate: true })
+  if (results.length === 0) return null
+  const r = results[0]
+  if (r.index !== 0) return null
+  const due = toISODate(r.start.date())
+  const time = r.start.isCertain('hour') ? toHHMM(r.start.date()) : undefined
+  const titleText = trimmed.slice(r.text.length).trim()
+  return { schedule: { kind: 'todo', due, time }, titleText }
 }
 
 export type ParsedSchedule =
@@ -133,10 +157,23 @@ function consumeRecurringMarker(tokens: string[], from: number): number {
 /**
  * Parses an input that is *only* a schedule (no title). Used by the Edit modal.
  * Returns null if the input is empty or unparseable as a schedule.
+ *
+ * Supports the `!` prefix for natural-language input via chrono. In schedule-only
+ * mode the chrono match must consume the entire post-`!` input.
  */
 export function parseSchedule(input: string): ParsedSchedule | null {
   const trimmed = input.trim()
   if (!trimmed) return null
+
+  if (trimmed.startsWith('!')) {
+    const rest = trimmed.slice(1).trim()
+    if (!rest) return null
+    const r = parseChronoLeading(rest)
+    if (!r) return null
+    if (r.titleText !== '') return null
+    return r.schedule
+  }
+
   const tokens = trimmed.split(/\s+/)
   const prefix = tryParseSchedulePrefix(tokens)
   if (!prefix) return null
@@ -175,6 +212,8 @@ export interface ParseResult {
  *   mwf 10:00-11:00 *recurring lecture
  *   daily 08:00 *recurring stretch
  *   note: random thought about X
+ *   !may 6 at noon doctor appt   (! routes through chrono natural-language parser)
+ *   !next friday call mom
  *   write report                  (bare → inbox)
  */
 export function parseCapture(input: string): ParseResult | null {
@@ -194,6 +233,19 @@ export function parseCapture(input: string): ParseResult | null {
     const body = trimmed.replace(/^note\s*:\s*/i, '')
     if (!body) return null
     return { task: baseTask({ kind: 'note', body }), prefix: 'note' }
+  }
+
+  // chrono natural-language path: leading "!"
+  if (trimmed.startsWith('!')) {
+    const rest = trimmed.slice(1).trim()
+    if (!rest) return null
+    const r = parseChronoLeading(rest)
+    if (!r || !r.titleText) return null
+    if (r.schedule.kind !== 'todo') return null
+    return {
+      task: baseTask({ title: r.titleText, due: r.schedule.due, time: r.schedule.time }),
+      prefix: 'chrono'
+    }
   }
 
   const tokens = trimmed.split(/\s+/)

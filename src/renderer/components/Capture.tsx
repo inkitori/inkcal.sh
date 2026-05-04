@@ -56,7 +56,7 @@ export default function Capture() {
               if (e.key === 'Enter') { e.preventDefault(); submit() }
               if (e.key === 'Escape') { e.preventDefault(); close() }
             }}
-            placeholder="capture…  e.g. today write report  /  mwf 10:00-11:00 lecture  /  daily 08:00 stretch"
+            placeholder="capture…  e.g. today write report  /  mwf 10:00-11:00 lecture  /  !next friday call mom"
             inputClassName="w-full text-base bg-transparent outline-none"
           />
         </div>

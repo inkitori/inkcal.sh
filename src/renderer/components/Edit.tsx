@@ -171,7 +171,7 @@ export default function Edit() {
                   mode="schedule"
                   value={schedule}
                   onChange={(v) => { setSchedule(v); setError(null) }}
-                  placeholder="e.g. today 10:00, fri 14:00, 2026-05-12"
+                  placeholder="e.g. today 10:00, fri 14:00, 2026-05-12, !may 6 at noon"
                   className="flex-1 flex flex-col gap-1"
                   inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
                   inputStyle={{ color: 'var(--text)' }}
