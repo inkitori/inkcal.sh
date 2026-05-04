@@ -56,7 +56,6 @@ export interface ParseResult {
  *   2026-05-12: pay rent
  *   mwf 10:00-11:00 *recurring lecture
  *   daily 08:00 *recurring take meds
- *   someday: pick up lexapro
  *   note: random thought about X
  *   write report                       (bare → inbox)
  */
@@ -77,13 +76,6 @@ export function parseCapture(input: string): ParseResult | null {
     const body = trimmed.replace(/^note\s*:\s*/i, '')
     if (!body) return null
     return { task: baseTask({ kind: 'note', body }), prefix: 'note' }
-  }
-
-  // someday
-  if (/^someday\s*:/i.test(trimmed)) {
-    const title = trimmed.replace(/^someday\s*:\s*/i, '')
-    if (!title) return null
-    return { task: baseTask({ title, due: null }), prefix: 'someday' }
   }
 
   // try recurring grammar first: "<dayspec> [HH:MM[-HH:MM]] [*recurring] title"

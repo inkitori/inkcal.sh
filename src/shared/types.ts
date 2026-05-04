@@ -21,7 +21,7 @@ export interface Task {
   title?: string
   /** for kind='note' */
   body?: string
-  /** ISO date 'YYYY-MM-DD' for one-off todos. null/undefined = inbox/someday */
+  /** ISO date 'YYYY-MM-DD' for one-off todos. null/undefined = inbox */
   due?: string | null
   /** 'HH:MM' optional time-of-day for one-off todos */
   time?: string

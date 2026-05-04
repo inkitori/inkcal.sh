@@ -54,7 +54,7 @@ export default function Capture() {
               if (e.key === 'Enter') { e.preventDefault(); submit() }
               if (e.key === 'Escape') { e.preventDefault(); close() }
             }}
-            placeholder="capture…  e.g. today: write report  /  mwf 10:00-11:00 lecture  /  daily 08:00 take meds  /  someday: ..."
+            placeholder="capture…  e.g. today: write report  /  mwf 10:00-11:00 lecture  /  daily 08:00 take meds"
             className="w-full text-base"
             style={{ color: 'var(--text)' }}
           />

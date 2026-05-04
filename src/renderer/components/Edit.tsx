@@ -28,6 +28,7 @@ export default function Edit() {
   const [start, setStart] = useState<string>('')
   const [end, setEnd] = useState<string>('')
   const titleRef = useRef<HTMLInputElement>(null)
+  const submitRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!open || !task) return
@@ -41,6 +42,22 @@ export default function Edit() {
     setEnd(rec.end ?? '')
     requestAnimationFrame(() => titleRef.current?.focus())
   }, [open, task])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null
+      if (e.key === 'Enter' && !e.shiftKey && target?.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+        submitRef.current()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        close()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, close])
 
   if (!open || !task) return null
 
@@ -68,6 +85,8 @@ export default function Edit() {
     close()
   }
 
+  submitRef.current = submit
+
   function toggleDay(d: Weekday) {
     setDays(prev => {
       const next = new Set(prev)
@@ -87,21 +106,12 @@ export default function Edit() {
       <div
         className="fade-in w-[560px] max-w-[90%] rounded-md"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-            e.preventDefault()
-            submit()
-          } else if (e.key === 'Escape') {
-            e.preventDefault()
-            close()
-          }
-        }}
         style={{
           background: 'var(--bg-2)',
           border: '1px solid var(--border)'
         }}
       >
-        <div className="px-4 py-3 flex flex-col gap-3">
+        <div className="px-4 py-3 flex flex-col gap-4">
           <Field label="title">
             <input
               ref={titleRef}
@@ -125,7 +135,7 @@ export default function Edit() {
                   />
                   <Pill onClick={() => setDue(todayISO())}>today</Pill>
                   <Pill onClick={() => setDue(addDays(todayISO(), 1))}>tomorrow</Pill>
-                  <Pill onClick={() => setDue('')}>someday</Pill>
+                  {due && <Pill onClick={() => setDue('')}>clear</Pill>}
                 </div>
               </Field>
               <Field label="time">
@@ -149,28 +159,31 @@ export default function Edit() {
                       key={d}
                       type="button"
                       onClick={() => toggleDay(d)}
-                      className="w-6 h-6 rounded-md font-mono text-[11px] uppercase"
+                      className="w-7 h-7 rounded-md font-mono text-[12px] uppercase"
                       style={{
                         background: days.has(d) && !daily ? 'var(--accent)' : 'transparent',
                         color: days.has(d) && !daily ? 'var(--bg)' : 'var(--text)',
-                        border: '1px solid var(--border)',
-                        opacity: daily ? 0.4 : 1
+                        border: '1px solid var(--border)'
                       }}
                     >
                       {DAY_LABEL[d]}
                     </button>
                   ))}
-                  <label className="ml-3 flex items-center gap-1.5 font-mono text-[11px] uppercase" style={{ color: 'var(--muted)' }}>
-                    <input
-                      type="checkbox"
-                      checked={daily}
-                      onChange={(e) => {
-                        setDaily(e.target.checked)
-                        if (e.target.checked) setDays(new Set())
-                      }}
-                    />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDaily(!daily)
+                      if (!daily) setDays(new Set())
+                    }}
+                    className="ml-2 h-7 px-2.5 rounded-md font-mono text-[12px] uppercase"
+                    style={{
+                      background: daily ? 'var(--accent)' : 'transparent',
+                      color: daily ? 'var(--bg)' : 'var(--text)',
+                      border: '1px solid var(--border)'
+                    }}
+                  >
                     daily
-                  </label>
+                  </button>
                 </div>
               </Field>
               <Field label="start">
@@ -221,7 +234,7 @@ function Pill({ children, onClick }: { children: React.ReactNode; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="px-2 py-0.5 rounded-md font-mono text-[10px] uppercase"
+      className="px-2.5 py-1 rounded-md font-mono text-[11px] uppercase"
       style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
     >
       {children}
