@@ -28,6 +28,7 @@ interface State {
   /** init/persistence */
   init: () => Promise<void>
   flushSoon: () => void
+  saveNow: () => Promise<void>
 
   /** view */
   setView: (v: ViewName) => void
@@ -78,20 +79,35 @@ export const useStore = create<State>((set, get) => ({
 
   async init() {
     const data = await window.inkcal.loadData()
+    const settings = { ...DEFAULT_DATA.settings, ...data.settings }
     set({
       ready: true,
       tasks: data.tasks ?? [],
       completions: data.completions ?? [],
-      settings: { ...DEFAULT_DATA.settings, ...data.settings },
-      view: data.settings?.defaultView ?? 'todo'
+      settings,
+      view: settings.lastView ?? settings.defaultView ?? 'todo'
     })
   },
   flushSoon() {
     persist(get)
   },
+  async saveNow() {
+    if (saveDebounce) clearTimeout(saveDebounce)
+    saveDebounce = null
+    const s = get()
+    const data: AppData = {
+      version: 1,
+      settings: s.settings,
+      tasks: s.tasks,
+      completions: s.completions
+    }
+    await window.inkcal.saveData(data)
+    await window.inkcal.flushData()
+  },
 
   setView(v) {
-    set({ view: v })
+    set(s => ({ view: v, settings: { ...s.settings, lastView: v } }))
+    persist(get)
   },
   openPalette() { set({ paletteOpen: true, captureOpen: false }) },
   closePalette() { set({ paletteOpen: false }) },

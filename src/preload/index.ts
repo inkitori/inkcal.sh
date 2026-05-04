@@ -10,7 +10,7 @@ const api = {
   listThemes: (): Promise<Theme[]> => ipcRenderer.invoke('themes:list'),
   getTheme: (name: string): Promise<Theme | null> => ipcRenderer.invoke('themes:get', name),
   openThemesDir: (): Promise<string> => ipcRenderer.invoke('themes:openDir'),
-  applyTransparency: (opts: { transparency: boolean; vibrancy?: string }): Promise<boolean> =>
+  applyTransparency: (opts: { transparency: boolean; vibrancy?: string }): Promise<{ recreated: boolean }> =>
     ipcRenderer.invoke('window:applyTransparency', opts),
   registerShortcut: (accelerator: string): Promise<boolean> =>
     ipcRenderer.invoke('shortcuts:register', accelerator),

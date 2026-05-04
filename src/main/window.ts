@@ -3,6 +3,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
 let mainWin: BrowserWindow | null = null
+let currentTransparency = false
 
 type Vibrancy = 'under-window' | 'sidebar' | 'titlebar' | 'selection' | 'menu' | 'popover' | 'header' | 'sheet' | 'window' | 'hud' | 'fullscreen-ui' | 'tooltip' | 'content' | 'under-page'
 
@@ -13,6 +14,7 @@ interface CreateOpts {
 
 export function createWindow(opts: CreateOpts = {}): BrowserWindow {
   const transparent = !!opts.transparency
+  currentTransparency = transparent
 
   mainWin = new BrowserWindow({
     width: 1200,
@@ -64,13 +66,30 @@ export function toggleWindow(): void {
 }
 
 /** Recreate the window with new transparency/vibrancy settings.
- *  Required because BrowserWindow's `transparent` and `vibrancy` flags
- *  cannot be changed after creation on macOS. */
+ *  Required because BrowserWindow's `transparent` flag cannot be
+ *  toggled after creation. */
 export function recreateWindow(opts: CreateOpts): BrowserWindow {
   if (mainWin) {
     mainWin.removeAllListeners('close')
-    mainWin.close()
+    mainWin.destroy()
     mainWin = null
   }
   return createWindow(opts)
+}
+
+/** Apply theme-related window settings smartly.
+ *  - vibrancy can change in place (no recreate)
+ *  - transparency toggle requires a recreate */
+export function applyWindowTheme(opts: CreateOpts): { recreated: boolean } {
+  const wantTransparent = !!opts.transparency
+  if (wantTransparent === currentTransparency && mainWin && !mainWin.isDestroyed()) {
+    if (wantTransparent) {
+      mainWin.setVibrancy((opts.vibrancy ?? null) as Vibrancy | null)
+    } else {
+      mainWin.setVibrancy(null)
+    }
+    return { recreated: false }
+  }
+  recreateWindow(opts)
+  return { recreated: true }
 }

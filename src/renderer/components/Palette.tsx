@@ -51,6 +51,8 @@ export default function Palette({ themes, reloadThemes }: Props) {
         run: async () => {
           applyTheme(t)
           await setSettings({ activeTheme: t.name, transparency: !!t.transparency?.enabled })
+          // ensure settings hit disk before any potential window recreate
+          await useStore.getState().saveNow()
           if (window.inkcal?.applyTransparency) {
             await window.inkcal.applyTransparency({
               transparency: !!t.transparency?.enabled,
@@ -118,16 +120,16 @@ export default function Palette({ themes, reloadThemes }: Props) {
         const t = themes.find(x => x.name === settings.activeTheme)
         const next = !settings.transparency
         await setSettings({ transparency: next })
-        await window.inkcal.applyTransparency({
-          transparency: next,
-          vibrancy: t?.transparency?.vibrancy
-        })
+        await useStore.getState().saveNow()
         if (t) {
-          // update root css alpha
           const alpha = next ? (t.transparency?.alpha ?? 0.85) : 1
           document.documentElement.style.setProperty('--window-alpha', String(alpha))
           document.body.classList.toggle('transparent', next)
         }
+        await window.inkcal.applyTransparency({
+          transparency: next,
+          vibrancy: t?.transparency?.vibrancy
+        })
       }
     })
 

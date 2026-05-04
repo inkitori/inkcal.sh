@@ -42,6 +42,8 @@ export interface Settings {
   globalHotkey: string
   transparency: boolean
   defaultView: 'todo' | 'calendar' | 'notes'
+  /** last view used; restored on next launch (incl. window recreate from transparency toggle) */
+  lastView?: 'todo' | 'calendar' | 'notes'
 }
 
 export interface AppData {

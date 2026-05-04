@@ -10,7 +10,7 @@ import {
   saveData
 } from './storage'
 import { getTheme, getUserThemesDir, loadThemes, watchThemes } from './themes'
-import { getWindow, recreateWindow } from './window'
+import { applyWindowTheme, getWindow } from './window'
 import { registerGlobalHotkey } from './shortcuts'
 import type { AppData } from '../shared/types'
 import { shell } from 'electron'
@@ -58,8 +58,7 @@ export function registerIpc() {
   ipcMain.handle(
     'window:applyTransparency',
     (_e, opts: { transparency: boolean; vibrancy?: any }) => {
-      recreateWindow(opts)
-      return true
+      return applyWindowTheme(opts)
     }
   )
 
