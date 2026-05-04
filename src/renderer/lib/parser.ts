@@ -243,13 +243,17 @@ function tryRecurring(input: string, requireTitle: boolean): RecurringMatch | nu
   m = /^(?:every\s+weekends?|weekends?)\b/i.exec(input)
   if (m) return finishRecurring(input, m[0].length, { days: [...WEEKEND_DAYS] }, requireTitle)
 
-  // 5. every <day list>
+  // 5. every <day list> | every <combo>
   m = /^every\s+/i.exec(input)
   if (m) {
     const after = input.slice(m[0].length)
     const list = consumeDayList(after, false)
     if (list && list.days.length > 0) {
       return finishRecurring(input, m[0].length + list.consumed, { days: list.days }, requireTitle)
+    }
+    const combo = tryCombo(after, true)
+    if (combo) {
+      return finishRecurring(input, m[0].length + combo.consumed, { days: combo.days }, requireTitle)
     }
     return null
   }
@@ -261,24 +265,30 @@ function tryRecurring(input: string, requireTitle: boolean): RecurringMatch | nu
   }
 
   // 7. day combo (mwf, mtwrf, etc.) — 2+ chars from [mtwrfsu] only
-  m = /^([mtwrfsu]{2,})(?=\s|$)/i.exec(input)
-  if (m) {
-    const word = m[1].toLowerCase()
-    // Don't match if it spells out a real word that DAY_WORD_TO_DAY already covers
-    // (e.g. "wed" is not a combo, it's the word for Wednesday).
-    if (!DAY_WORD_TO_DAY[word]) {
-      const days: Weekday[] = []
-      for (const c of word) {
-        const d = COMBO_TO_DAY[c]
-        if (d && !days.includes(d)) days.push(d)
-      }
-      if (days.length > 0) {
-        return finishRecurring(input, m[0].length, { days }, requireTitle)
-      }
-    }
+  const combo = tryCombo(input, false)
+  if (combo) {
+    return finishRecurring(input, combo.consumed, { days: combo.days }, requireTitle)
   }
 
   return null
+}
+
+function tryCombo(s: string, allowSingle: boolean): { days: Weekday[]; consumed: number } | null {
+  const re = allowSingle
+    ? /^([mtwrfsu]+)(?=\s|$)/i
+    : /^([mtwrfsu]{2,})(?=\s|$)/i
+  const m = re.exec(s)
+  if (!m) return null
+  const word = m[1].toLowerCase()
+  // Don't match if it spells a real day word (e.g. "wed" is Wednesday, not a combo).
+  if (DAY_WORD_TO_DAY[word]) return null
+  const days: Weekday[] = []
+  for (const c of word) {
+    const d = COMBO_TO_DAY[c]
+    if (d && !days.includes(d)) days.push(d)
+  }
+  if (days.length === 0) return null
+  return { days, consumed: m[0].length }
 }
 
 function finishRecurring(
