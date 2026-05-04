@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { selectNotes, useStore } from '@/lib/store'
 import { useListKeymap } from '@/lib/keymap'
 import VimEditor, { type VimMode } from '@/components/VimEditor'
+import { halfPageStep, scrollSelectedInto } from './TodoView'
 
 export default function NotesView() {
   const tasks = useStore(s => s.tasks)
@@ -16,6 +17,7 @@ export default function NotesView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [startMode, setStartMode] = useState<'insert' | 'normal'>('insert')
   const [vimMode, setVimMode] = useState<VimMode>('insert')
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const pendingSelectId = useStore(s => s.pendingSelectId)
   const setPendingSelectId = useStore(s => s.setPendingSelectId)
@@ -51,8 +53,25 @@ export default function NotesView() {
       setStartMode('normal')
       setVimMode('normal')
       setEditingId(n.id)
+    },
+    onCenterView: () => scrollSelectedInto(scrollRef.current, 'center'),
+    onTopView: () => scrollSelectedInto(scrollRef.current, 'start'),
+    onBottomView: () => scrollSelectedInto(scrollRef.current, 'end'),
+    onHalfPageDown: () => {
+      if (!notes.length) return
+      const step = halfPageStep(scrollRef.current)
+      setSelected(prev => Math.min(notes.length - 1, prev + step))
+    },
+    onHalfPageUp: () => {
+      if (!notes.length) return
+      const step = halfPageStep(scrollRef.current)
+      setSelected(prev => Math.max(0, prev - step))
     }
   })
+
+  useLayoutEffect(() => {
+    scrollSelectedInto(scrollRef.current, 'nearest')
+  }, [selected, notes.length])
 
   if (notes.length === 0) {
     return (
@@ -70,6 +89,7 @@ export default function NotesView() {
   }
 
   return (
+    <div ref={scrollRef} className="h-full overflow-y-auto">
     <div className="px-6 py-5 max-w-[720px] mx-auto fade-in">
       <header className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--muted)' }}>
         notes <span style={{ color: 'var(--muted-2)' }}>{notes.length}</span>
@@ -81,6 +101,7 @@ export default function NotesView() {
             <div
               key={n.id}
               onClick={() => setSelected(i)}
+              data-selected={i === selected ? 'true' : undefined}
               className="px-3 py-2 rounded-md relative"
               style={{
                 background: i === selected ? 'var(--bg-2)' : 'transparent',
@@ -111,6 +132,7 @@ export default function NotesView() {
           )
         })}
       </div>
+    </div>
     </div>
   )
 }

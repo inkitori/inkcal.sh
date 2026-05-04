@@ -98,6 +98,8 @@ export default function VimEditor({
 
     const cm = getCM(view)
     if (cm) {
+      bridgeUnnamedRegisterToClipboard()
+
       cm.on('vim-mode-change', (e: { mode: VimMode }) => {
         modeRef.current = e.mode
         onModeChangeRef.current?.(e.mode)
@@ -143,4 +145,42 @@ export default function VimEditor({
   }, [])
 
   return <div ref={hostRef} className="w-full" />
+}
+
+// Mirror vim's unnamed register (`"`) through the OS clipboard so that y/d/c
+// yanks can be pasted into other apps and `p` can paste from them. The
+// registerController is a singleton on the vim global state, so this only
+// needs to run once per process — but re-running is idempotent.
+let bridged = false
+function bridgeUnnamedRegisterToClipboard() {
+  if (bridged) return
+  const registerController = (Vim as unknown as { getRegisterController: () => any }).getRegisterController?.()
+  const reg = registerController?.unnamedRegister
+  if (!reg) return
+  bridged = true
+
+  const origSetText = reg.setText.bind(reg)
+  reg.setText = (text: string, linewise?: boolean, blockwise?: boolean) => {
+    origSetText(text, linewise, blockwise)
+    if (typeof text === 'string') {
+      try { window.inkcal.clipboardWrite(text) } catch {}
+    }
+  }
+  reg.toString = () => {
+    try {
+      const ext = window.inkcal.clipboardRead()
+      const internal = reg.keyBuffer.join('')
+      // If the OS clipboard changed externally, sync it in (and infer
+      // linewise from a trailing newline so `p` pastes onto a new line for
+      // line-copied content).
+      if (ext !== internal) {
+        reg.keyBuffer = [ext]
+        reg.linewise = ext.endsWith('\n')
+        reg.blockwise = false
+      }
+      return ext
+    } catch {
+      return reg.keyBuffer.join('')
+    }
+  }
 }

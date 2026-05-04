@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   useStore,
   selectInboxTodos,
@@ -36,6 +36,7 @@ export default function TodoView() {
 
   const [selected, setSelected] = useState(0)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const today = todayISO()
 
@@ -130,8 +131,26 @@ export default function TodoView() {
     onEdit: () => {
       const row = rows[safeIdx]
       if (row) openEdit(row.task.id)
+    },
+    onCenterView: () => scrollSelectedInto(scrollRef.current, 'center'),
+    onTopView: () => scrollSelectedInto(scrollRef.current, 'start'),
+    onBottomView: () => scrollSelectedInto(scrollRef.current, 'end'),
+    onHalfPageDown: () => {
+      if (!rows.length) return
+      const step = halfPageStep(scrollRef.current)
+      setSelected(prev => Math.min(rows.length - 1, prev + step))
+    },
+    onHalfPageUp: () => {
+      if (!rows.length) return
+      const step = halfPageStep(scrollRef.current)
+      setSelected(prev => Math.max(0, prev - step))
     }
   })
+
+  // Keep the cursor in view as the user navigates with j/k/gg/G.
+  useLayoutEffect(() => {
+    scrollSelectedInto(scrollRef.current, 'nearest')
+  }, [safeIdx, rows.length])
 
   if (rows.length === 0) {
     return (
@@ -176,7 +195,8 @@ export default function TodoView() {
   const recurringRows = rows.filter(r => r.scheduleOnly)
 
   return (
-    <div className="px-6 py-5 max-w-[760px] mx-auto fade-in">
+    <div ref={scrollRef} className="h-full overflow-y-auto">
+      <div className="px-6 py-5 max-w-[760px] mx-auto fade-in">
       {overdueRows.length > 0 && (
         <Section title="overdue" count={overdueRows.length} tone="danger">
           {(() => { const out = renderRows(overdueRows); cursor += overdueRows.length; return out })()}
@@ -202,6 +222,26 @@ export default function TodoView() {
           {(() => { const out = renderRows(recurringRows); cursor += recurringRows.length; return out })()}
         </Section>
       )}
+      </div>
     </div>
   )
+}
+
+// Find the currently selected row (by data-selected="true") inside the scroll
+// container and align it within the viewport.
+export function scrollSelectedInto(container: HTMLElement | null, block: ScrollLogicalPosition) {
+  if (!container) return
+  const el = container.querySelector<HTMLElement>('[data-selected="true"]')
+  if (!el) return
+  el.scrollIntoView({ block, inline: 'nearest' })
+}
+
+// Approx half a viewport in row-units, using the selected row's height as a
+// proxy. Falls back to 10 if no row is rendered yet.
+export function halfPageStep(container: HTMLElement | null): number {
+  if (!container) return 10
+  const el = container.querySelector<HTMLElement>('[data-selected="true"]')
+  const rowH = el?.getBoundingClientRect().height
+  if (!rowH || rowH <= 0) return 10
+  return Math.max(1, Math.round((container.clientHeight / rowH) / 2))
 }

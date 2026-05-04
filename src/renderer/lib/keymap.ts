@@ -13,10 +13,19 @@ interface ListKeyHandlers {
   onLeft?: () => void
   onRight?: () => void
   onEscape?: () => void
+  // Viewport-aligning analogues of vim's zz / zt / zb. They reposition the
+  // selected row inside the scroll container without changing selection.
+  onCenterView?: () => void
+  onTopView?: () => void
+  onBottomView?: () => void
+  // Half-page jumps: Ctrl-d / Ctrl-u. Caller decides the row count.
+  onHalfPageDown?: () => void
+  onHalfPageUp?: () => void
 }
 
 let lastG = 0
 let lastD = 0
+let pendingZ = 0
 
 export function isInTextInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -41,9 +50,27 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
     function onKey(e: KeyboardEvent) {
       if (paletteOpen || captureOpen || editOpen || searchOpen) return
       if (isInTextInput(e.target)) return
-      if (e.metaKey || e.ctrlKey) return
 
       const k = e.key
+
+      // Ctrl-d / Ctrl-u half-page jumps. Allowed even though they use ctrl,
+      // since they're a vim convention the rest of the keymap shouldn't gate.
+      if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (k === 'd') { e.preventDefault(); handlers.onHalfPageDown?.(); return }
+        if (k === 'u') { e.preventDefault(); handlers.onHalfPageUp?.(); return }
+      }
+
+      if (e.metaKey || e.ctrlKey) return
+
+      // z-prefix: zz centers, zt aligns top, zb aligns bottom.
+      if (pendingZ && Date.now() - pendingZ < 400) {
+        pendingZ = 0
+        if (k === 'z') { e.preventDefault(); handlers.onCenterView?.(); return }
+        if (k === 't') { e.preventDefault(); handlers.onTopView?.(); return }
+        if (k === 'b') { e.preventDefault(); handlers.onBottomView?.(); return }
+        // fall through: treat as a normal keypress
+      }
+      if (k === 'z') { pendingZ = Date.now(); return }
 
       if (k === 'j' || k === 'ArrowDown') {
         e.preventDefault(); handlers.onMove?.(1); return

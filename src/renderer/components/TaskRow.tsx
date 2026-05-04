@@ -55,6 +55,7 @@ export default function TaskRow({
   return (
     <div
       onClick={onClick}
+      data-selected={isSelected ? 'true' : undefined}
       className="group flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-default"
       style={{
         background: isSelected ? 'var(--bg-2)' : 'transparent',

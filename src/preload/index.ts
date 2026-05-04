@@ -1,7 +1,10 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, clipboard } from 'electron'
 import type { AboutInfo, AppData, Theme, UpdaterState } from '../shared/types'
 
 const api = {
+  clipboardRead: (): string => clipboard.readText(),
+  clipboardWrite: (text: string): void => clipboard.writeText(text),
+
   loadData: (): Promise<AppData> => ipcRenderer.invoke('data:load'),
   saveData: (data: AppData): Promise<boolean> => ipcRenderer.invoke('data:save', data),
   flushData: (): Promise<boolean> => ipcRenderer.invoke('data:flush'),
