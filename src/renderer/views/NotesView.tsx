@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { selectNotes, useStore } from '@/lib/store'
 import { useListKeymap } from '@/lib/keymap'
+import VimEditor, { type VimMode } from '@/components/VimEditor'
 
 export default function NotesView() {
   const tasks = useStore(s => s.tasks)
@@ -12,20 +13,9 @@ export default function NotesView() {
   const updateTask = useStore(s => s.updateTask)
 
   const [selected, setSelected] = useState(0)
-  const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
-  const taRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (!renamingId) return
-    const note = notes.find(n => n.id === renamingId)
-    if (!note) return
-    setDraft(note.body ?? '')
-    requestAnimationFrame(() => {
-      taRef.current?.focus()
-      taRef.current?.select()
-    })
-  }, [renamingId])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [startMode, setStartMode] = useState<'insert' | 'normal'>('insert')
+  const [vimMode, setVimMode] = useState<VimMode>('insert')
 
   const pendingSelectId = useStore(s => s.pendingSelectId)
   const setPendingSelectId = useStore(s => s.setPendingSelectId)
@@ -50,7 +40,17 @@ export default function NotesView() {
     onOpenBelow: () => openCapture('note: '),
     onRename: () => {
       const n = notes[selected]
-      if (n) setRenamingId(n.id)
+      if (!n) return
+      setStartMode('insert')
+      setVimMode('insert')
+      setEditingId(n.id)
+    },
+    onEdit: () => {
+      const n = notes[selected]
+      if (!n) return
+      setStartMode('normal')
+      setVimMode('normal')
+      setEditingId(n.id)
     }
   })
 
@@ -62,11 +62,11 @@ export default function NotesView() {
     )
   }
 
-  function commit() {
-    if (!renamingId) return
-    const next = draft.trim()
-    if (next.length > 0) updateTask(renamingId, { body: next })
-    setRenamingId(null)
+  function commit(value: string) {
+    if (!editingId) return
+    const next = value.trim()
+    if (next.length > 0) updateTask(editingId, { body: next })
+    setEditingId(null)
   }
 
   return (
@@ -76,38 +76,29 @@ export default function NotesView() {
       </header>
       <div className="flex flex-col gap-1">
         {notes.map((n, i) => {
-          const isRenaming = n.id === renamingId
+          const isEditing = n.id === editingId
           return (
             <div
               key={n.id}
               onClick={() => setSelected(i)}
-              className="px-3 py-2 rounded-md"
+              className="px-3 py-2 rounded-md relative"
               style={{
                 background: i === selected ? 'var(--bg-2)' : 'transparent',
                 outline: i === selected ? '1px solid var(--border)' : 'none'
               }}
             >
-              {isRenaming ? (
-                <textarea
-                  ref={taRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      commit()
-                    } else if (e.key === 'Escape') {
-                      e.preventDefault()
-                      setRenamingId(null)
-                    }
-                    e.stopPropagation()
-                  }}
-                  onBlur={commit}
-                  className="w-full bg-transparent outline-none text-[14px] resize-none"
-                  rows={Math.max(2, draft.split('\n').length)}
-                  style={{ color: 'var(--text)' }}
-                />
+              {isEditing ? (
+                <>
+                  <ModeBadge mode={vimMode} />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <VimEditor
+                      initialValue={n.body ?? ''}
+                      startMode={startMode}
+                      onCommit={commit}
+                      onModeChange={setVimMode}
+                    />
+                  </div>
+                </>
               ) : (
                 <div className="note-md text-[14px]" style={{ color: 'var(--text)' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{n.body ?? ''}</ReactMarkdown>
@@ -120,6 +111,26 @@ export default function NotesView() {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function ModeBadge({ mode }: { mode: VimMode }) {
+  const color =
+    mode === 'insert' ? 'var(--accent)'
+    : mode === 'visual' ? 'var(--success)'
+    : mode === 'replace' ? 'var(--danger)'
+    : 'var(--muted)'
+  return (
+    <div
+      className="absolute -top-2 right-2 px-1.5 py-px font-mono text-[9px] uppercase tracking-widest rounded-sm pointer-events-none"
+      style={{
+        background: 'var(--bg)',
+        color,
+        border: `1px solid ${color}`
+      }}
+    >
+      {mode}
     </div>
   )
 }

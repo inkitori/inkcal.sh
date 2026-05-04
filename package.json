@@ -18,9 +18,15 @@
     "release": "./scripts/release.sh"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.41.1",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
+    "@replit/codemirror-vim": "^6.3.0",
     "chrono-node": "^2.7.7",
+    "codemirror": "^6.0.2",
     "electron-updater": "^6.8.3",
     "fuse.js": "^7.0.0",
     "nanoid": "^5.0.7",
