@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Header from './components/Header'
 import Capture from './components/Capture'
+import Edit from './components/Edit'
 import Palette from './components/Palette'
 import UndoToast from './components/UndoToast'
 import TodoView from './views/TodoView'
@@ -69,6 +70,7 @@ export default function App() {
         {view === 'notes' && <NotesView />}
       </main>
       <Capture />
+      <Edit />
       <Palette themes={themes} reloadThemes={reloadThemes} />
       <UndoToast />
     </div>

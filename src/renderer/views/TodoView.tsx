@@ -27,8 +27,11 @@ export default function TodoView() {
   const toggle = useStore(s => s.toggleCompletion)
   const deleteTask = useStore(s => s.deleteTask)
   const openCapture = useStore(s => s.openCapture)
+  const openEdit = useStore(s => s.openEdit)
+  const updateTask = useStore(s => s.updateTask)
 
   const [selected, setSelected] = useState(0)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
 
   const today = todayISO()
 
@@ -80,7 +83,15 @@ export default function TodoView() {
       deleteTask(row.task.id)
       setSelected(idx => Math.min(idx, Math.max(0, rows.length - 2)))
     },
-    onOpenBelow: () => openCapture('today: ')
+    onOpenBelow: () => openCapture('today: '),
+    onRename: () => {
+      const row = rows[safeIdx]
+      if (row) setRenamingId(row.task.id)
+    },
+    onEdit: () => {
+      const row = rows[safeIdx]
+      if (row) openEdit(row.task.id)
+    }
   })
 
   if (rows.length === 0) {
@@ -103,10 +114,16 @@ export default function TodoView() {
           isCompleted={row.isCompleted}
           isOverdue={row.isOverdue}
           isSelected={idx === safeIdx}
+          isRenaming={row.task.id === renamingId}
           showDue={row.showDue}
           showTime
           onToggle={() => toggle(row.task.id, row.date)}
           onClick={() => setSelected(idx)}
+          onRenameSubmit={(text) => {
+            updateTask(row.task.id, { title: text })
+            setRenamingId(null)
+          }}
+          onRenameCancel={() => setRenamingId(null)}
         />
       )
     })

@@ -9,6 +9,7 @@ interface ListKeyHandlers {
   onDelete?: () => void
   onOpenBelow?: () => void
   onEdit?: () => void
+  onRename?: () => void
   onLeft?: () => void
   onRight?: () => void
   onEscape?: () => void
@@ -30,13 +31,14 @@ export function isInTextInput(target: EventTarget | null): boolean {
  * suppress when typing in an input. `paletteOpen`/`captureOpen` short-circuit.
  */
 export function useListKeymap(handlers: ListKeyHandlers): void {
-  const { paletteOpen, captureOpen } = useStore(s => ({
+  const { paletteOpen, captureOpen, editOpen } = useStore(s => ({
     paletteOpen: s.paletteOpen,
-    captureOpen: s.captureOpen
+    captureOpen: s.captureOpen,
+    editOpen: s.editOpen
   }))
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (paletteOpen || captureOpen) return
+      if (paletteOpen || captureOpen || editOpen) return
       if (isInTextInput(e.target)) return
       if (e.metaKey || e.ctrlKey) return
 
@@ -53,6 +55,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
       if (k === ' ' || k === 'x') { e.preventDefault(); handlers.onToggle?.(); return }
       if (k === 'o') { e.preventDefault(); handlers.onOpenBelow?.(); return }
       if (k === 'e') { e.preventDefault(); handlers.onEdit?.(); return }
+      if (k === 'i') { e.preventDefault(); handlers.onRename?.(); return }
       if (k === 'G') { e.preventDefault(); handlers.onBottom?.(); return }
       if (k === 'g') {
         const now = Date.now()
@@ -81,7 +84,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [handlers, paletteOpen, captureOpen])
+  }, [handlers, paletteOpen, captureOpen, editOpen])
 }
 
 /** Global keymap for app-level shortcuts: cmd+1/2/3, cmd+k, cmd+p */
@@ -126,6 +129,7 @@ export function useGlobalKeymap(): void {
       if (e.key === 'Escape') {
         if (s.paletteOpen) s.closePalette()
         else if (s.captureOpen) s.closeCapture()
+        else if (s.editOpen) s.closeEdit()
       }
     }
     window.addEventListener('keydown', onKey)

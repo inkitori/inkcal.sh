@@ -23,6 +23,8 @@ interface State {
   paletteOpen: boolean
   captureOpen: boolean
   capturePrefill: string
+  editOpen: boolean
+  editTaskId: string | null
   undo: UndoEntry | null
 
   /** init/persistence */
@@ -36,6 +38,8 @@ interface State {
   closePalette: () => void
   openCapture: (prefill?: string) => void
   closeCapture: () => void
+  openEdit: (id: string) => void
+  closeEdit: () => void
 
   /** mutations */
   addTask: (t: Task) => void
@@ -75,6 +79,8 @@ export const useStore = create<State>((set, get) => ({
   paletteOpen: false,
   captureOpen: false,
   capturePrefill: '',
+  editOpen: false,
+  editTaskId: null,
   undo: null,
 
   async init() {
@@ -109,10 +115,12 @@ export const useStore = create<State>((set, get) => ({
     set(s => ({ view: v, settings: { ...s.settings, lastView: v } }))
     persist(get)
   },
-  openPalette() { set({ paletteOpen: true, captureOpen: false }) },
+  openPalette() { set({ paletteOpen: true, captureOpen: false, editOpen: false }) },
   closePalette() { set({ paletteOpen: false }) },
-  openCapture(prefill = '') { set({ captureOpen: true, paletteOpen: false, capturePrefill: prefill }) },
+  openCapture(prefill = '') { set({ captureOpen: true, paletteOpen: false, editOpen: false, capturePrefill: prefill }) },
   closeCapture() { set({ captureOpen: false, capturePrefill: '' }) },
+  openEdit(id) { set({ editOpen: true, editTaskId: id, captureOpen: false, paletteOpen: false }) },
+  closeEdit() { set({ editOpen: false, editTaskId: null }) },
 
   addTask(t) {
     set(s => ({ tasks: [...s.tasks, t] }))
