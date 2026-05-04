@@ -425,8 +425,21 @@ function tryChronoWithTitle(input: string): ChronoMatch | null {
   return tryChrono(input, true)
 }
 
+const SINGLE_LETTER_DAY_LONG: Record<string, string> = {
+  m: 'monday', t: 'tuesday', w: 'wednesday', r: 'thursday',
+  f: 'friday', s: 'saturday', u: 'sunday'
+}
+
+function expandLeadingDayShortcut(input: string): string {
+  const m = /^([mtwrfsu])\s+/i.exec(input)
+  if (!m) return input
+  const long = SINGLE_LETTER_DAY_LONG[m[1].toLowerCase()]
+  return long + ' ' + input.slice(m[0].length)
+}
+
 function tryChrono(input: string, requireTitle: boolean): ChronoMatch | null {
-  const results = chrono.parse(input, new Date(), { forwardDate: true })
+  const expanded = expandLeadingDayShortcut(input)
+  const results = chrono.parse(expanded, new Date(), { forwardDate: true })
   if (results.length === 0) return null
   const r = results[0]
   // Need at least a date concept (day/weekday/month/year) — reject time-only matches
@@ -439,8 +452,8 @@ function tryChrono(input: string, requireTitle: boolean): ChronoMatch | null {
   const due = toISODate(r.start.date())
   const time = r.start.isCertain('hour') ? toHHMM(r.start.date()) : undefined
   const endTime = r.end && r.end.isCertain('hour') ? toHHMM(r.end.date()) : undefined
-  const before = input.slice(0, r.index)
-  const after = input.slice(r.index + r.text.length)
+  const before = expanded.slice(0, r.index)
+  const after = expanded.slice(r.index + r.text.length)
   const title = (before + ' ' + after).replace(/\s+/g, ' ').trim()
   if (requireTitle && !title) return null
   return { due, time, endTime, title }
