@@ -5,8 +5,6 @@ import { useStore } from '@/lib/store'
 export default function Header() {
   const view = useStore(s => s.view)
   const setView = useStore(s => s.setView)
-  const openCapture = useStore(s => s.openCapture)
-  const openPalette = useStore(s => s.openPalette)
 
   const [now, setNow] = useState(new Date())
   useEffect(() => {
@@ -49,15 +47,6 @@ export default function Header() {
               {v}
             </button>
           ))}
-          <span className="mx-2" style={{ color: 'var(--muted-2)' }}>|</span>
-          <button onClick={() => openCapture()} className="no-drag px-2 py-1 rounded font-mono text-[11px]"
-                  style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}>
-            capture <span style={{ color: 'var(--muted-2)' }}>⌘K</span>
-          </button>
-          <button onClick={() => openPalette()} className="no-drag px-2 py-1 rounded font-mono text-[11px]"
-                  style={{ color: 'var(--muted)' }}>
-            <span style={{ color: 'var(--muted-2)' }}>⌘P</span>
-          </button>
         </nav>
       </div>
     </header>
