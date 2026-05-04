@@ -65,6 +65,34 @@ export interface Theme {
   }
 }
 
+export interface AboutInfo {
+  name: string
+  productName: string
+  version: string
+  author: string
+  repo: string
+  electron: string
+  packaged: boolean
+}
+
+export type UpdaterStatus =
+  | 'idle'
+  | 'unsupported'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'up-to-date'
+  | 'error'
+
+export interface UpdaterState {
+  status: UpdaterStatus
+  currentVersion: string
+  latestVersion?: string
+  downloadPercent?: number
+  error?: string
+}
+
 export const DEFAULT_DATA: AppData = {
   version: 1,
   settings: {

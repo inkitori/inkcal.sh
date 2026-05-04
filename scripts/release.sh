@@ -77,7 +77,40 @@ if [[ $LOCAL_ONLY -eq 0 ]]; then
   git tag "v$NEW_VERSION"
   git push origin HEAD
   git push origin "v$NEW_VERSION"
-  echo "==> done. v$NEW_VERSION published. existing installs will pick it up on next launch (or within 6h)."
+
+  # write release notes that highlight the .dmg and bury the auto-updater plumbing.
+  # commits since the previous tag (or last 20 if no prior tag exists) become the changelog.
+  PREV_TAG="$(git describe --tags --abbrev=0 "v$NEW_VERSION^" 2>/dev/null || echo '')"
+  if [[ -n "$PREV_TAG" ]]; then
+    CHANGELOG="$(git log --pretty=format:'- %s' "$PREV_TAG..v$NEW_VERSION")"
+  else
+    CHANGELOG="$(git log --pretty=format:'- %s' -n 20 "v$NEW_VERSION")"
+  fi
+  DMG_URL="https://github.com/inkitori/inkcal.sh/releases/download/v$NEW_VERSION/inkcal.sh-$NEW_VERSION-arm64.dmg"
+  NOTES=$(cat <<EOF
+## Download
+
+[**inkcal.sh-$NEW_VERSION-arm64.dmg**]($DMG_URL) — apple silicon. drag into /Applications.
+
+(installed copies update automatically — no need to re-download for patches.)
+
+## Changes
+
+$CHANGELOG
+
+---
+
+<sub>the \`.zip\`, \`.blockmap\`, and \`latest-mac.yml\` files are used by the in-app auto-updater. ignore them unless you're debugging.</sub>
+EOF
+)
+  echo "==> writing release notes..."
+  gh release edit "v$NEW_VERSION" --notes "$NOTES" --repo inkitori/inkcal.sh >/dev/null
+
+  # electron-builder uploaded as a *draft* so you can verify before going public.
+  # to publish: open https://github.com/inkitori/inkcal.sh/releases and hit "Publish release"
+  # on the v$NEW_VERSION draft. or from the cli:
+  #   gh release edit v$NEW_VERSION --draft=false --repo inkitori/inkcal.sh
+  echo "==> done. v$NEW_VERSION uploaded as a DRAFT release with notes — publish it on github to roll out."
 else
   echo "==> done. installed locally at /Applications/inkcal.sh.app"
 fi

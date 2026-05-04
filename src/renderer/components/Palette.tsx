@@ -24,6 +24,8 @@ export default function Palette({ themes, reloadThemes }: Props) {
   const setSettings = useStore(s => s.setSettings)
   const settings = useStore(s => s.settings)
   const tasks = useStore(s => s.tasks)
+  const openAbout = useStore(s => s.openAbout)
+  const openUpdateCheck = useStore(s => s.openUpdateCheck)
   const inputRef = useRef<HTMLInputElement>(null)
   const [q, setQ] = useState('')
   const [cursor, setCursor] = useState(0)
@@ -110,6 +112,20 @@ export default function Palette({ themes, reloadThemes }: Props) {
       hint: 'command',
       type: 'command',
       run: () => { window.inkcal.revealData() }
+    })
+    out.push({
+      id: 'cmd:about',
+      label: 'about',
+      hint: 'command',
+      type: 'command',
+      run: () => { openAbout() }
+    })
+    out.push({
+      id: 'cmd:checkUpdates',
+      label: 'check for updates',
+      hint: 'command',
+      type: 'command',
+      run: () => { openUpdateCheck() }
     })
     out.push({
       id: 'cmd:toggleTransparency',

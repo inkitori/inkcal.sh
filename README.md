@@ -25,7 +25,7 @@ npm run release -- --local  # build + install locally, no git/publish
 
 requires `gh` to be authenticated (`gh auth login`). the script bumps `package.json`, builds, uploads the dmg+zip+`latest-mac.yml` to a GitHub release, copies the new `.app` into `/Applications`, then commits and pushes the tag.
 
-installed copies check `inkitori/inkcal.sh` releases on launch and every 6h via [`electron-updater`](https://www.electron.build/auto-update). updates download in the background and apply on next quit.
+installed copies check `inkitori/inkcal.sh` releases on launch and every 6h via [`electron-updater`](https://www.electron.build/auto-update). updates download silently in the background and apply on next quit. open the about panel (⌘P → `about inkcal.sh`) to see current version, dev info, repo link, and update status. ⌘P → `check for updates` forces a check.
 
 note: builds are unsigned (ad-hoc signed only). first launch macOS will say "unidentified developer" — right-click → open → open. unsigned + auto-updating works for personal use; for distribution to others, get an apple developer cert and add `signtool`/notarization to the release script.
 

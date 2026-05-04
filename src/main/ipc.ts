@@ -12,6 +12,7 @@ import {
 import { getTheme, getUserThemesDir, loadThemes, watchThemes } from './themes'
 import { applyWindowTheme, getWindow } from './window'
 import { registerGlobalHotkey } from './shortcuts'
+import { checkForUpdates, getUpdaterState } from './updater'
 import type { AppData } from '../shared/types'
 import { shell } from 'electron'
 
@@ -69,6 +70,23 @@ export function registerIpc() {
   ipcMain.handle('app:dataDir', () => getDataDir())
   ipcMain.handle('app:dataFile', () => getDataFilePath())
   ipcMain.handle('app:revealData', () => shell.showItemInFolder(getDataFilePath()))
+
+  ipcMain.handle('app:about', () => ({
+    name: app.getName(),
+    productName: 'inkcal.sh',
+    version: app.getVersion(),
+    author: 'enyouki',
+    repo: 'https://github.com/inkitori/inkcal.sh',
+    electron: process.versions.electron,
+    packaged: app.isPackaged
+  }))
+  ipcMain.handle('app:openExternal', (_e, url: string) => shell.openExternal(url))
+
+  ipcMain.handle('updater:state', () => getUpdaterState())
+  ipcMain.handle('updater:check', async () => {
+    await checkForUpdates()
+    return getUpdaterState()
+  })
 
   // theme dir watcher → notify renderer when files change
   watchThemes(async () => {

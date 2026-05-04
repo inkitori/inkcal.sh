@@ -1,20 +1,63 @@
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import pkg from 'electron-updater'
+import type { UpdaterState } from '../shared/types'
 
 const { autoUpdater } = pkg
 
+let state: UpdaterState = {
+  status: 'idle',
+  currentVersion: app.getVersion()
+}
+
+function setState(patch: Partial<UpdaterState>): void {
+  state = { ...state, ...patch }
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('updater:state', state)
+  }
+}
+
+export function getUpdaterState(): UpdaterState {
+  return state
+}
+
+export function checkForUpdates(): Promise<void> {
+  if (!app.isPackaged) {
+    setState({ status: 'unsupported' })
+    return Promise.resolve()
+  }
+  setState({ status: 'checking' })
+  return autoUpdater.checkForUpdates().then(() => undefined).catch((err) => {
+    setState({ status: 'error', error: String(err?.message ?? err) })
+  })
+}
+
 export function initAutoUpdater(): void {
-  if (!app.isPackaged) return
+  if (!app.isPackaged) {
+    setState({ status: 'unsupported' })
+    return
+  }
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
 
-  autoUpdater.on('error', (err) => console.error('[updater]', err))
-  autoUpdater.on('update-available', (info) => console.log('[updater] available', info.version))
-  autoUpdater.on('update-downloaded', (info) => console.log('[updater] downloaded', info.version))
+  autoUpdater.on('checking-for-update', () => setState({ status: 'checking' }))
+  autoUpdater.on('update-available', (info) =>
+    setState({ status: 'available', latestVersion: info.version })
+  )
+  autoUpdater.on('update-not-available', (info) =>
+    setState({ status: 'up-to-date', latestVersion: info.version })
+  )
+  autoUpdater.on('download-progress', (p) =>
+    setState({ status: 'downloading', downloadPercent: Math.round(p.percent) })
+  )
+  autoUpdater.on('update-downloaded', (info) =>
+    setState({ status: 'downloaded', latestVersion: info.version })
+  )
+  autoUpdater.on('error', (err) => {
+    console.error('[updater]', err)
+    setState({ status: 'error', error: String(err?.message ?? err) })
+  })
 
-  autoUpdater.checkForUpdates().catch((err) => console.error('[updater] initial check failed', err))
-  setInterval(() => {
-    autoUpdater.checkForUpdates().catch((err) => console.error('[updater] periodic check failed', err))
-  }, 6 * 60 * 60 * 1000)
+  checkForUpdates()
+  setInterval(() => { checkForUpdates() }, 6 * 60 * 60 * 1000)
 }

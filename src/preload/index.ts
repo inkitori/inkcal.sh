@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AppData, Theme } from '../shared/types'
+import type { AboutInfo, AppData, Theme, UpdaterState } from '../shared/types'
 
 const api = {
   loadData: (): Promise<AppData> => ipcRenderer.invoke('data:load'),
@@ -17,11 +17,20 @@ const api = {
   dataDir: (): Promise<string> => ipcRenderer.invoke('app:dataDir'),
   dataFile: (): Promise<string> => ipcRenderer.invoke('app:dataFile'),
   revealData: (): Promise<void> => ipcRenderer.invoke('app:revealData'),
+  about: (): Promise<AboutInfo> => ipcRenderer.invoke('app:about'),
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('app:openExternal', url),
+  updaterState: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:state'),
+  checkForUpdates: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:check'),
 
   onThemesChanged: (cb: (themes: Theme[]) => void) => {
     const listener = (_e: unknown, themes: Theme[]) => cb(themes)
     ipcRenderer.on('themes:changed', listener)
     return () => ipcRenderer.removeListener('themes:changed', listener)
+  },
+  onUpdaterState: (cb: (state: UpdaterState) => void) => {
+    const listener = (_e: unknown, state: UpdaterState) => cb(state)
+    ipcRenderer.on('updater:state', listener)
+    return () => ipcRenderer.removeListener('updater:state', listener)
   }
 }
 

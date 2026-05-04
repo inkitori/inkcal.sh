@@ -27,6 +27,8 @@ interface State {
   editOpen: boolean
   editTaskId: string | null
   searchOpen: boolean
+  aboutOpen: boolean
+  updateCheckOpen: boolean
   pendingSelectId: string | null
   undoStack: UndoEntry[]
 
@@ -45,6 +47,10 @@ interface State {
   closeEdit: () => void
   openSearch: () => void
   closeSearch: () => void
+  openAbout: () => void
+  closeAbout: () => void
+  openUpdateCheck: () => void
+  closeUpdateCheck: () => void
   setPendingSelectId: (id: string | null) => void
 
   /** mutations */
@@ -88,6 +94,8 @@ export const useStore = create<State>((set, get) => ({
   editOpen: false,
   editTaskId: null,
   searchOpen: false,
+  aboutOpen: false,
+  updateCheckOpen: false,
   pendingSelectId: null,
   undoStack: [],
 
@@ -131,6 +139,10 @@ export const useStore = create<State>((set, get) => ({
   closeEdit() { set({ editOpen: false, editTaskId: null }) },
   openSearch() { set({ searchOpen: true, paletteOpen: false, captureOpen: false, editOpen: false }) },
   closeSearch() { set({ searchOpen: false }) },
+  openAbout() { set({ aboutOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false }) },
+  closeAbout() { set({ aboutOpen: false }) },
+  openUpdateCheck() { set({ updateCheckOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false, aboutOpen: false }) },
+  closeUpdateCheck() { set({ updateCheckOpen: false }) },
   setPendingSelectId(id) { set({ pendingSelectId: id }) },
 
   addTask(t) {

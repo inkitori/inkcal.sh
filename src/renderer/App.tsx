@@ -4,6 +4,8 @@ import Capture from './components/Capture'
 import Edit from './components/Edit'
 import Palette from './components/Palette'
 import Search from './components/Search'
+import About from './components/About'
+import UpdateCheck from './components/UpdateCheck'
 import TodoView from './views/TodoView'
 import CalendarView from './views/CalendarView'
 import NotesView from './views/NotesView'
@@ -73,6 +75,8 @@ export default function App() {
       <Edit />
       <Palette themes={themes} reloadThemes={reloadThemes} />
       <Search />
+      <About />
+      <UpdateCheck />
     </div>
   )
 }
