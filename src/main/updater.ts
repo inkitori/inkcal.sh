@@ -25,6 +25,16 @@ export function checkForUpdates(): Promise<void> {
     setState({ status: 'unsupported' })
     return Promise.resolve()
   }
+  // If a download is already in flight or finished, re-checking would make
+  // electron-updater fire `update-not-available` ("newer version is being
+  // installed already"), which we'd misread as "up-to-date". Keep current state.
+  if (
+    state.status === 'available' ||
+    state.status === 'downloading' ||
+    state.status === 'downloaded'
+  ) {
+    return Promise.resolve()
+  }
   setState({ status: 'checking' })
   return autoUpdater.checkForUpdates().then(() => undefined).catch((err) => {
     setState({ status: 'error', error: String(err?.message ?? err) })
