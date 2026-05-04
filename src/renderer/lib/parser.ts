@@ -487,9 +487,10 @@ function eqDays(a: Weekday[], b: Weekday[]): boolean {
 // — preview helpers —
 
 function recurrencePreview(r: Recurrence): string {
-  const days = recurrenceShort(r)
+  const days = r.daily ? 'day' : recurrenceShort(r)
   const time = timePreview(r.start, r.end)
-  return [days, time].filter(Boolean).join(' · ')
+  const sched = days ? `every ${days}` : ''
+  return [sched, time].filter(Boolean).join(' · ')
 }
 
 function timePreview(start?: string, end?: string): string {

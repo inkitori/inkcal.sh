@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { selectNotes, useStore } from '@/lib/store'
 import { useListKeymap } from '@/lib/keymap'
 
@@ -107,8 +109,8 @@ export default function NotesView() {
                   style={{ color: 'var(--text)' }}
                 />
               ) : (
-                <div className="text-[14px] whitespace-pre-wrap" style={{ color: 'var(--text)' }}>
-                  {n.body}
+                <div className="note-md text-[14px]" style={{ color: 'var(--text)' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{n.body ?? ''}</ReactMarkdown>
                 </div>
               )}
               <div className="font-mono text-[10px] mt-1" style={{ color: 'var(--muted-2)' }}>
