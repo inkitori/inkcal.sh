@@ -55,24 +55,38 @@ export default function UpdateCheck() {
 
   if (!open) return null
 
+  const canRestart = updater?.status === 'downloaded'
+
   return (
-    <div
-      className="fixed inset-0 z-30 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={close}
-    >
+    <div className="fixed top-4 right-4 z-30 pointer-events-none">
       <div
-        className="fade-in rounded-md px-4 py-3 font-mono text-[12px]"
-        onClick={(e) => e.stopPropagation()}
+        className="fade-in rounded-md px-3 py-2 font-mono text-[12px] flex items-center gap-3 pointer-events-auto"
         style={{
           background: 'var(--bg-2)',
           border: '1px solid var(--border)',
           color: 'var(--text)',
-          minWidth: 240,
-          textAlign: 'center'
+          minWidth: 220,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
         }}
       >
-        {statusLine(updater)}
+        <span className="flex-1">{statusLine(updater)}</span>
+        {canRestart && (
+          <button
+            onClick={() => window.inkcal.quitAndInstall()}
+            className="font-mono text-[11px] uppercase px-2 py-1 rounded cursor-pointer"
+            style={{ color: 'var(--text)', border: '1px solid var(--border)' }}
+          >
+            restart
+          </button>
+        )}
+        <button
+          onClick={close}
+          aria-label="dismiss"
+          className="cursor-pointer"
+          style={{ color: 'var(--muted)', lineHeight: 1 }}
+        >
+          ×
+        </button>
       </div>
     </div>
   )

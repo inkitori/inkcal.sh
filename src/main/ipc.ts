@@ -12,7 +12,7 @@ import {
 import { getTheme, getUserThemesDir, loadThemes, watchThemes } from './themes'
 import { applyWindowTheme, getWindow } from './window'
 import { registerGlobalHotkey } from './shortcuts'
-import { checkForUpdates, getUpdaterState } from './updater'
+import { checkForUpdates, getUpdaterState, quitAndInstall } from './updater'
 import type { AppData } from '../shared/types'
 import { shell } from 'electron'
 
@@ -86,6 +86,10 @@ export function registerIpc() {
   ipcMain.handle('updater:check', async () => {
     await checkForUpdates()
     return getUpdaterState()
+  })
+  ipcMain.handle('updater:quitAndInstall', () => {
+    quitAndInstall()
+    return true
   })
 
   // theme dir watcher → notify renderer when files change

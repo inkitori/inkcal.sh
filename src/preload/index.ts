@@ -21,6 +21,7 @@ const api = {
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('app:openExternal', url),
   updaterState: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:state'),
   checkForUpdates: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:check'),
+  quitAndInstall: (): Promise<boolean> => ipcRenderer.invoke('updater:quitAndInstall'),
 
   onThemesChanged: (cb: (themes: Theme[]) => void) => {
     const listener = (_e: unknown, themes: Theme[]) => cb(themes)

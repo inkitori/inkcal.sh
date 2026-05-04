@@ -20,6 +20,11 @@ export function getUpdaterState(): UpdaterState {
   return state
 }
 
+export function quitAndInstall(): void {
+  if (!app.isPackaged) return
+  autoUpdater.quitAndInstall()
+}
+
 export function checkForUpdates(): Promise<void> {
   if (!app.isPackaged) {
     setState({ status: 'unsupported' })
