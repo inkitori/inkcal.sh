@@ -1,6 +1,6 @@
 # inkcal.sh
 
-vim driven ez todo list
+calm vim notetaking
 
 ### todos
 
