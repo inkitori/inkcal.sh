@@ -2,6 +2,10 @@
 
 vim driven ez todo list
 
+![split view](assets/split-view.png)
+![capture](assets/capture.png)
+![note focus](assets/note-focus.png)
+
 ## "App is damaged"
 
 fix by running (i'll fix this once i can pay for a key lol):

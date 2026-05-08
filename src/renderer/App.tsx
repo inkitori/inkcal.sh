@@ -153,9 +153,9 @@ function Pane({ id, focused, onFocus, flex, children }: {
             position: 'absolute',
             inset: 0,
             pointerEvents: 'none',
-            outline: '2px solid var(--accent)',
-            outlineOffset: '-2px',
-            zIndex: 50
+            outline: '1px solid var(--border-2)',
+            outlineOffset: '-1px',
+            zIndex: 10
           }}
         />
       )}

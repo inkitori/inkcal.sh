@@ -115,7 +115,7 @@ export const DEFAULT_DATA: AppData = {
     globalHotkey: 'Cmd+Shift+Space',
     transparency: false,
     defaultView: 'todo',
-    vimEnabled: false,
+    vimEnabled: true,
     notesMaxWidth: 'wide',
     splitEnabled: false,
     splitSecondary: null,
