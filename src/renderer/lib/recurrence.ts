@@ -15,7 +15,7 @@ export interface OverdueRecurring {
   lastCompleted: string | null
 }
 
-function matches(task: Task, dateISO: string): boolean {
+export function matches(task: Task, dateISO: string): boolean {
   if (task.kind !== 'recurring' || !task.recurrence) return false
   const r = task.recurrence
   // days takes precedence per the type doc
@@ -70,8 +70,10 @@ export function lastExpectedOccurrence(task: Task, todayISO: string): string | n
 
 /**
  * Returns one entry per recurring task whose most recent expected occurrence
- * was missed AND that hasn't been completed today. Never stacks — at most one
- * entry per task.
+ * was missed, today is NOT a scheduled day, and the task hasn't been completed
+ * today. Tasks scheduled for today never appear here — they go through
+ * `selectMissedScheduledToday` instead so the row can sit in today's section
+ * with a "missed last X" chip.
  */
 export function selectOverdueRecurring(
   tasks: Task[],
@@ -81,6 +83,7 @@ export function selectOverdueRecurring(
   const out: OverdueRecurring[] = []
   for (const t of tasks) {
     if (t.kind !== 'recurring') continue
+    if (matches(t, todayISO)) continue
     const lastExpected = lastExpectedOccurrence(t, todayISO)
     if (!lastExpected) continue
 
@@ -97,5 +100,57 @@ export function selectOverdueRecurring(
     out.push({ task: t, lastExpected, lastCompleted })
   }
   out.sort((a, b) => a.lastExpected.localeCompare(b.lastExpected))
+  return out
+}
+
+/**
+ * Recurring tasks that ARE scheduled today and missed their last expected
+ * occurrence. Used to render a "missed last X" chip on today's row without
+ * pushing the task into the overdue section.
+ */
+export function selectMissedScheduledToday(
+  tasks: Task[],
+  completions: Completion[],
+  todayISO: string
+): OverdueRecurring[] {
+  const out: OverdueRecurring[] = []
+  for (const t of tasks) {
+    if (t.kind !== 'recurring') continue
+    if (!matches(t, todayISO)) continue
+    const lastExpected = lastExpectedOccurrence(t, todayISO)
+    if (!lastExpected) continue
+
+    const taskCompletions = completions.filter(c => c.taskId === t.id)
+    if (taskCompletions.some(c => c.date === lastExpected)) continue
+    if (taskCompletions.some(c => c.date === todayISO)) continue
+
+    const sortedCompletions = taskCompletions
+      .map(c => c.date)
+      .sort((a, b) => b.localeCompare(a))
+    const lastCompleted = sortedCompletions[0] ?? null
+    out.push({ task: t, lastExpected, lastCompleted })
+  }
+  return out
+}
+
+/**
+ * Recurring tasks that have a completion for today even though today is NOT a
+ * scheduled day. Used to surface "catch-up" rows in today's section so that
+ * completing an off-schedule recurring puts it somewhere predictable, rather
+ * than leaving the row in the off-schedule recurring section uncheckable.
+ */
+export function selectCatchUpRecurring(
+  tasks: Task[],
+  completions: Completion[],
+  todayISO: string
+): Task[] {
+  const out: Task[] = []
+  for (const t of tasks) {
+    if (t.kind !== 'recurring') continue
+    if (matches(t, todayISO)) continue
+    if (!completions.some(c => c.taskId === t.id && c.date === todayISO)) continue
+    out.push(t)
+  }
+  out.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
   return out
 }

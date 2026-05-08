@@ -159,6 +159,13 @@ export function useGlobalKeymap(): void {
         s.setSettings(patch)
         return
       }
+      if (meta && e.key === ';') {
+        e.preventDefault()
+        if (s.settings.splitEnabled && s.settings.splitSecondary) {
+          s.setFocusedPane(s.focusedPane === 'primary' ? 'secondary' : 'primary')
+        }
+        return
+      }
       if (meta && e.key === '1') { e.preventDefault(); s.setView('todo'); return }
       if (meta && e.key === '2') { e.preventDefault(); s.setView('calendar'); return }
       if (meta && e.key === '3') { e.preventDefault(); s.setView('notes'); return }

@@ -53,6 +53,8 @@ export interface Settings {
   splitSecondary: 'todo' | 'calendar' | 'notes' | null
   /** primary pane fraction, 0..1 */
   splitRatio: number
+  /** when true, NoteFocus shows a live markdown preview alongside the editor */
+  notePreviewInFocus: boolean
 }
 
 export interface AppData {
@@ -111,7 +113,8 @@ export const DEFAULT_DATA: AppData = {
     notesMaxWidth: 'wide',
     splitEnabled: false,
     splitSecondary: null,
-    splitRatio: 0.5
+    splitRatio: 0.5,
+    notePreviewInFocus: false
   },
   tasks: [],
   completions: []

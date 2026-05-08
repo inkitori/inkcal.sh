@@ -216,10 +216,13 @@ export const useStore = create<State>((set, get) => ({
 
 export function selectOverdueTodos(s: State): Task[] {
   const today = todayISO()
-  const completedToday = new Set(s.completions.filter(c => c.date === today).map(c => c.taskId))
+  // A todo is overdue if its due date is before today and it has no completion
+  // for any *non-today* date. A todo completed *today* still appears here (sunk
+  // to bottom by sinkCompleted) for the rest of the day, so the user sees the
+  // "I just did this" feedback in the section they expect.
   return s.tasks
-    .filter(t => t.kind === 'todo' && t.due && isBefore(t.due, today) && !isAnyCompletion(s.completions, t.id))
-    .filter(t => !completedToday.has(t.id))
+    .filter(t => t.kind === 'todo' && t.due && isBefore(t.due, today))
+    .filter(t => !s.completions.some(c => c.taskId === t.id && c.date !== today))
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))
 }
 
@@ -251,8 +254,4 @@ export function selectNotes(s: State): Task[] {
 
 export function selectRecurring(s: State): Task[] {
   return s.tasks.filter(t => t.kind === 'recurring')
-}
-
-function isAnyCompletion(comps: Completion[], taskId: string): boolean {
-  return comps.some(c => c.taskId === taskId)
 }

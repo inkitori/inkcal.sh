@@ -85,10 +85,13 @@ export function overdueLabel(missedISO: string, todayISO: string, lastCompleted:
     const daysSinceDone = diffDays(todayISO, lastCompleted)
     if (daysSinceDone >= 1) return `last done ${daysSinceDone}d ago`
   }
-  if (daysSinceMissed <= 7) {
-    const wd = weekdayOf(missedISO)
-    return `missed ${wd}`
+  const missedWd = weekdayOf(missedISO)
+  // "missed thu" on a Thursday is ambiguous (could be today). Prefix "last"
+  // when the missed weekday equals today's, or when the gap is a full week+.
+  if (daysSinceMissed >= 7 || missedWd === weekdayOf(todayISO)) {
+    return `missed last ${missedWd}`
   }
+  if (daysSinceMissed <= 6) return `missed ${missedWd}`
   return `missed ${daysSinceMissed}d ago`
 }
 

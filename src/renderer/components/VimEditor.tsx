@@ -13,6 +13,8 @@ interface Props {
   onCommit: (value: string) => void
   onModeChange?: (mode: VimMode) => void
   vimEnabled?: boolean
+  /** Fired on every doc change. Used by NoteFocus to drive a live preview. */
+  onChange?: (value: string) => void
 }
 
 export default function VimEditor({
@@ -20,7 +22,8 @@ export default function VimEditor({
   startMode,
   onCommit,
   onModeChange,
-  vimEnabled = true
+  vimEnabled = true,
+  onChange
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -32,8 +35,10 @@ export default function VimEditor({
   // Stable refs so the editor effect can run once.
   const onCommitRef = useRef(onCommit)
   const onModeChangeRef = useRef(onModeChange)
+  const onChangeRef = useRef(onChange)
   onCommitRef.current = onCommit
   onModeChangeRef.current = onModeChange
+  onChangeRef.current = onChange
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -88,7 +93,24 @@ export default function VimEditor({
       keymap.of([...defaultKeymap, ...historyKeymap]),
       theme,
       EditorView.lineWrapping,
-      EditorView.domEventHandlers({ blur: commit })
+      // Skip commit when:
+      //  (a) focus is moving to a sibling inside the same editor (vim's search
+      //      panel, e.g. when pressing `/`) — otherwise we'd unmount before
+      //      vim opens its panel.
+      //  (b) the whole window has lost focus (alt-tab, cmd-tab) — we don't
+      //      want to drop the user out of focus mode just because they
+      //      switched apps. They'll come back to where they left off.
+      EditorView.domEventHandlers({
+        blur: (e: FocusEvent) => {
+          const next = e.relatedTarget as HTMLElement | null
+          if (next && next.closest('.cm-editor')) return
+          if (!document.hasFocus()) return
+          commit()
+        }
+      }),
+      EditorView.updateListener.of((u) => {
+        if (u.docChanged) onChangeRef.current?.(u.state.doc.toString())
+      })
     ]
 
     const view = new EditorView({
@@ -137,18 +159,52 @@ export default function VimEditor({
 
   // Capture-phase keydown so we see Esc *before* vim handles it. With vim:
   // first Esc returns to normal, second Esc commits. Without vim: Esc commits
-  // immediately.
+  // immediately. Also intercepts `zt`/`zz`/`zb` in vim normal mode and scrolls
+  // the cursor element into view via the nearest scrollable ancestor — vim's
+  // own viewport scroll targets `.cm-scroller`, which doesn't actually scroll
+  // for our short-content editors.
   useEffect(() => {
     const el = hostRef.current
     if (!el) return
+    let pendingZ = 0
+    function alignCursor(where: 'start' | 'center' | 'end') {
+      const view = viewRef.current
+      if (!view) return
+      const head = view.state.selection.main.head
+      const dom = view.domAtPos(head).node
+      const target = dom.nodeType === Node.ELEMENT_NODE
+        ? (dom as HTMLElement)
+        : dom.parentElement
+      target?.scrollIntoView({ block: where, inline: 'nearest' })
+    }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Escape') return
-      if (!vimEnabled || modeRef.current === 'normal') {
-        e.preventDefault()
-        e.stopPropagation()
-        commitRef.current()
+      if (e.key === 'Escape') {
+        if (!vimEnabled || modeRef.current === 'normal') {
+          e.preventDefault()
+          e.stopPropagation()
+          commitRef.current()
+        }
+        return
       }
-      // else: vim will switch insert/visual → normal; stay mounted
+      if (vimEnabled && modeRef.current === 'normal') {
+        const k = e.key
+        if (pendingZ && Date.now() - pendingZ < 500) {
+          pendingZ = 0
+          if (k === 't' || k === 'z' || k === 'b') {
+            e.preventDefault()
+            e.stopPropagation()
+            alignCursor(k === 't' ? 'start' : k === 'b' ? 'end' : 'center')
+            return
+          }
+          // fall through: not one of ours, treat as a normal key
+        }
+        if (k === 'z') {
+          pendingZ = Date.now()
+          e.preventDefault()
+          e.stopPropagation()
+          return
+        }
+      }
     }
     el.addEventListener('keydown', onKeyDown, true)
     return () => el.removeEventListener('keydown', onKeyDown, true)

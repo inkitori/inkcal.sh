@@ -140,11 +140,12 @@ export default function NotesView() {
               {!isEditing && (
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteTask(n.id) }}
-                  className="absolute top-1 right-1 px-1.5 py-px font-mono text-[11px] rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 px-2 py-1 font-mono text-[11px] leading-none rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{
-                    background: 'var(--bg-2)',
-                    color: 'var(--muted)',
-                    border: '1px solid var(--border)'
+                    background: 'rgba(220,80,80,0.12)',
+                    color: 'var(--danger)',
+                    border: '1px solid var(--danger)',
+                    zIndex: 10
                   }}
                   title="delete note"
                 >

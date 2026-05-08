@@ -46,6 +46,13 @@ export default function Settings() {
             onChange={(v) => setSettings({ vimEnabled: v })}
           />
 
+          <ToggleField
+            label="note preview in focus"
+            hint="show a live markdown preview alongside the editor in note focus mode (f)"
+            checked={settings.notePreviewInFocus}
+            onChange={(v) => setSettings({ notePreviewInFocus: v })}
+          />
+
           <HotkeyField
             label="global hotkey"
             value={settings.globalHotkey}

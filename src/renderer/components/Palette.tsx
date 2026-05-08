@@ -150,6 +150,17 @@ export default function Palette({ themes, reloadThemes }: Props) {
         await setSettings({ splitSecondary: main })
       }
     })
+    out.push({
+      id: 'cmd:swapPaneFocus',
+      label: 'swap pane focus',
+      hint: '⌘;',
+      type: 'command',
+      run: () => {
+        if (!settings.splitEnabled || !settings.splitSecondary) return
+        const cur = useStore.getState().focusedPane
+        useStore.getState().setFocusedPane(cur === 'primary' ? 'secondary' : 'primary')
+      }
+    })
     for (const v of ['todo', 'calendar', 'notes'] as const) {
       out.push({
         id: `cmd:setSecondary:${v}`,

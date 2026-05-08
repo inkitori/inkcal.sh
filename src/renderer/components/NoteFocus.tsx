@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useStore } from '@/lib/store'
 import VimEditor, { type VimMode } from './VimEditor'
 
@@ -11,6 +13,37 @@ export default function NoteFocus() {
 
   const note = tasks.find(t => t.id === noteId && t.kind === 'note') ?? null
   const [mode, setMode] = useState<VimMode>('insert')
+  const [draft, setDraft] = useState(note?.body ?? '')
+  const editorPaneRef = useRef<HTMLDivElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setDraft(note?.body ?? '')
+  }, [noteId, note?.body])
+
+  const showPreview = settings.notePreviewInFocus
+
+  // Mirror the editor pane's scroll ratio onto the preview pane. Proportional
+  // sync is good enough for short-to-medium notes and sidesteps source-line ↔
+  // rendered-DOM mapping. As the editor scrolls (mouse wheel, vim navigation
+  // that drags the viewport), the preview tracks along.
+  useLayoutEffect(() => {
+    if (!showPreview || !noteId) return
+    const editor = editorPaneRef.current
+    const preview = previewRef.current
+    if (!editor || !preview) return
+    function onScroll() {
+      if (!editor || !preview) return
+      const editorMax = editor.scrollHeight - editor.clientHeight
+      if (editorMax <= 0) return
+      const ratio = editor.scrollTop / editorMax
+      const previewMax = preview.scrollHeight - preview.clientHeight
+      if (previewMax <= 0) return
+      preview.scrollTop = ratio * previewMax
+    }
+    editor.addEventListener('scroll', onScroll, { passive: true })
+    return () => editor.removeEventListener('scroll', onScroll)
+  }, [showPreview, noteId, draft])
 
   useEffect(() => {
     if (!noteId) return
@@ -44,7 +77,7 @@ export default function NoteFocus() {
       onClick={close}
     >
       <div
-        className="fade-in w-[80%] max-w-[1100px] rounded-md relative"
+        className="fade-in w-[90%] max-w-[1400px] rounded-md relative"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--bg-2)',
@@ -62,14 +95,28 @@ export default function NoteFocus() {
           <span>note</span>
           {settings.vimEnabled && <span style={{ color: 'var(--accent)' }}>{mode}</span>}
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <VimEditor
-            initialValue={note.body ?? ''}
-            startMode={settings.vimEnabled ? 'normal' : 'insert'}
-            onCommit={commit}
-            onModeChange={setMode}
-            vimEnabled={settings.vimEnabled}
-          />
+        <div className="flex-1 flex min-h-0">
+          <div
+            ref={editorPaneRef}
+            className="flex-1 overflow-y-auto px-6 py-4 min-w-0"
+            style={showPreview ? { borderRight: '1px solid var(--border)' } : undefined}
+          >
+            <VimEditor
+              initialValue={note.body ?? ''}
+              startMode={settings.vimEnabled ? 'normal' : 'insert'}
+              onCommit={commit}
+              onModeChange={setMode}
+              onChange={showPreview ? setDraft : undefined}
+              vimEnabled={settings.vimEnabled}
+            />
+          </div>
+          {showPreview && (
+            <div ref={previewRef}
+                 className="flex-1 overflow-y-auto px-6 py-4 min-w-0 note-md text-[14px]"
+                 style={{ color: 'var(--text)' }}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{draft}</ReactMarkdown>
+            </div>
+          )}
         </div>
         <div
           className="px-4 py-2 flex items-center gap-3 font-mono text-[10px] uppercase"
