@@ -2,9 +2,21 @@
 
 vim driven ez todo list
 
+### todos
+
+![todos](assets/todos.png)
+
+### split view
+
 ![split view](assets/split-view.png)
-![capture](assets/capture.png)
-![note focus](assets/note-focus.png)
+
+### notes
+
+![notes](assets/notes.png)
+
+### language parsing
+
+![language parsing](assets/language-parsing.png)
 
 ## "App is damaged"
 

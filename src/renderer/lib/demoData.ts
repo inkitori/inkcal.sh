@@ -29,21 +29,18 @@ interface NoteSpec {
 }
 
 const RECURRING: RecurringSpec[] = [
-  { id: 'demo-r-lecture', title: 'lecture · cs331', days: ['mon', 'wed', 'fri'], start: '14:00', end: '15:00' },
+  { id: 'demo-r-lecture', title: 'lecture · cs451', days: ['mon', 'wed', 'fri'], start: '14:00', end: '15:00' },
   { id: 'demo-r-seminar', title: 'seminar · llm reasoning', days: ['tue', 'thu'], start: '13:00', end: '14:30' },
   { id: 'demo-r-advisor', title: 'advisor meeting', days: ['mon'], start: '16:00', end: '17:00' },
   { id: 'demo-r-reading', title: 'reading group', days: ['wed'], start: '10:00', end: '11:00' },
   { id: 'demo-r-lab', title: 'lab social', days: ['fri'], start: '17:00', end: '18:30' },
-  { id: 'demo-r-standup', title: 'standup', days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:30', end: '09:45' },
-  { id: 'demo-r-run', title: 'morning run', daily: true, start: '07:00', end: '07:45' },
+  { id: 'demo-r-run', title: 'run', daily: true, start: '07:00', end: '07:45' },
   { id: 'demo-r-log', title: 'daily log', daily: true, start: '23:00', end: '23:15' }
 ]
 
 const INBOX: InboxSpec[] = [
-  { id: 'demo-i-1', title: 'read attention is all you need (again)' },
   { id: 'demo-i-2', title: 'finish hw3 q4' },
   { id: 'demo-i-3', title: 'rebuild docker image w/ py3.12' },
-  { id: 'demo-i-4', title: 'swap thinkpad keycaps' },
   { id: 'demo-i-5', title: 'update nvim config' },
   { id: 'demo-i-6', title: 'set up wandb for ablations' }
 ]
@@ -52,7 +49,7 @@ const NOTES: NoteSpec[] = [
   {
     id: 'demo-n-research',
     body: [
-      '# research log',
+      '# RESEARCH STUFF',
       '',
       '- sentencepiece beat bpe by 0.3 ppl on dev',
       '- todo: run on full corpus (~14h on h100)',
@@ -68,10 +65,6 @@ const NOTES: NoteSpec[] = [
     body: [
       '# paper notes',
       '',
-      '## attention is all you need (re-read)',
-      '- multi-head attn ≈ subspace decomposition',
-      '- sinusoidal pos still surprisingly competitive',
-      '',
       '## flash attn 2 vs 3',
       '- todo: bench locally',
       '- 3 claims 1.5-2x but only on hopper'
@@ -82,9 +75,7 @@ const NOTES: NoteSpec[] = [
     body: [
       '# books',
       '',
-      '- gödel, escher, bach (ch 5)',
-      '- thinking, fast and slow',
-      '- elements of statistical learning (skim ch 7)'
+      '- scaling your model'
     ].join('\n')
   },
   {
@@ -93,8 +84,7 @@ const NOTES: NoteSpec[] = [
       '# misc',
       '',
       '- rotate ssh keys before end of month',
-      '- new keyboard arrives next week',
-      '- check visa renewal window'
+      '- new keyboard arrives next week'
     ].join('\n')
   }
 ]
@@ -117,9 +107,7 @@ export function buildDemoData(): { tasks: Task[]; completions: Completion[] } {
   ]
 
   const UNTIMED: TimedSpec[] = [
-    { id: 'demo-u-skim', title: 'skim transformer scaling paper', due: today },
     { id: 'demo-u-reviewer', title: 'reply to reviewer 2 comments', due: today },
-    { id: 'demo-u-ta', title: 'email ta re: quiz regrade', due: today },
     { id: 'demo-u-flight', title: 'book flight home', due: t(7) },
     { id: 'demo-u-rec', title: 'send rec letter request', due: t(-2) },
     { id: 'demo-u-slides', title: 'finalize slides', due: t(5) }
@@ -175,10 +163,8 @@ export function buildDemoData(): { tasks: Task[]; completions: Completion[] } {
 
   const completions: Completion[] = [
     { taskId: 'demo-r-run', date: today, at: stamp(0, 7) },
-    { taskId: 'demo-r-standup', date: today, at: stamp(0, 9) },
     { taskId: 'demo-r-log', date: yesterday, at: stamp(-1, 23) },
-    { taskId: 'demo-r-run', date: yesterday, at: stamp(-1, 7) },
-    { taskId: 'demo-u-ta', date: today, at: stamp(0, 10) }
+    { taskId: 'demo-r-run', date: yesterday, at: stamp(-1, 7) }
   ]
 
   return { tasks, completions }
