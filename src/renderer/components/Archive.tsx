@@ -24,6 +24,7 @@ function describeAge(prefix: string, dateISO: string, today: string): string {
 }
 
 let lastD = 0
+let lastG = 0
 
 export default function Archive() {
   const open = useStore(s => s.archiveOpen)
@@ -128,6 +129,17 @@ export default function Archive() {
         return
       }
       if (k === 'G') { e.preventDefault(); setSelected(Math.max(0, rows.length - 1)); return }
+      if (k === 'g') {
+        e.preventDefault()
+        const now = Date.now()
+        if (now - lastG < 400) {
+          setSelected(0)
+          lastG = 0
+        } else {
+          lastG = now
+        }
+        return
+      }
       if (k === ' ' || k === 'x') {
         e.preventDefault()
         const r = rows[safeIdx]
