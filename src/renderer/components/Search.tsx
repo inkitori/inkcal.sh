@@ -17,6 +17,7 @@ export default function Search() {
   const tasks = useStore(s => s.tasks)
   const completions = useStore(s => s.completions)
   const setView = useStore(s => s.setView)
+  const openArchive = useStore(s => s.openArchive)
   const setPendingSelectId = useStore(s => s.setPendingSelectId)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -75,10 +76,13 @@ export default function Search() {
   function pick(it: Item) {
     const t = it.task
     const isCompletedTodo = t.kind === 'todo' && completions.some(c => c.taskId === t.id)
-    if (t.deletedAt || isCompletedTodo) setView('archive')
-    else if (t.kind === 'note') setView('notes')
-    else setView('todo')
     setPendingSelectId(it.id)
+    if (t.deletedAt || isCompletedTodo) {
+      openArchive()
+    } else {
+      if (t.kind === 'note') setView('notes')
+      else setView('todo')
+    }
     close()
   }
 

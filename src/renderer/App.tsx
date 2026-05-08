@@ -11,7 +11,8 @@ import NoteFocus from './components/NoteFocus'
 import TodoView from './views/TodoView'
 import CalendarView from './views/CalendarView'
 import NotesView from './views/NotesView'
-import ArchiveView from './views/ArchiveView'
+import Archive from './components/Archive'
+import StatusLine from './components/StatusLine'
 import { useStore } from './lib/store'
 import { applyTheme } from './lib/theme'
 import { useGlobalKeymap } from './lib/keymap'
@@ -20,10 +21,9 @@ import type { Theme } from '../shared/types'
 
 const SPLIT_BREAKPOINT = 1100
 
-function renderView(name: 'todo' | 'calendar' | 'notes' | 'archive') {
+function renderView(name: 'todo' | 'calendar' | 'notes') {
   if (name === 'todo') return <TodoView />
   if (name === 'calendar') return <CalendarView />
-  if (name === 'archive') return <ArchiveView />
   return <NotesView />
 }
 
@@ -118,10 +118,12 @@ export default function App() {
       <Edit />
       <Palette themes={themes} reloadThemes={reloadThemes} />
       <Search />
+      <Archive />
       <About />
       <UpdateCheck />
       <Settings />
       <NoteFocus />
+      <StatusLine />
     </div>
   )
 }

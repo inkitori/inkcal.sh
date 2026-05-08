@@ -45,7 +45,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
     out.push({ id: 'view:todo', label: 'go to todo', hint: '⌘1', type: 'view', run: () => setView('todo') })
     out.push({ id: 'view:cal', label: 'go to calendar', hint: '⌘2', type: 'view', run: () => setView('calendar') })
     out.push({ id: 'view:notes', label: 'go to notes', hint: '⌘3', type: 'view', run: () => setView('notes') })
-    out.push({ id: 'view:archive', label: 'go to archive', hint: '⌘4', type: 'view', run: () => setView('archive') })
+    out.push({ id: 'cmd:archive', label: 'open archive', hint: 'A', type: 'command', run: () => useStore.getState().openArchive() })
 
     for (const t of themes) {
       out.push({
@@ -145,7 +145,6 @@ export default function Palette({ themes, reloadThemes }: Props) {
       run: async () => {
         if (!settings.splitEnabled || !settings.splitSecondary) return
         const main = useStore.getState().view
-        if (main === 'archive') return
         const sec = settings.splitSecondary
         setView(sec)
         await setSettings({ splitSecondary: main })

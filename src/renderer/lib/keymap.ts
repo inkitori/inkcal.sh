@@ -44,11 +44,12 @@ export function isInTextInput(target: EventTarget | null): boolean {
  * suppress when typing in an input. `paletteOpen`/`captureOpen` short-circuit.
  */
 export function useListKeymap(handlers: ListKeyHandlers): void {
-  const { paletteOpen, captureOpen, editOpen, searchOpen, settingsOpen, noteFocusId } = useStore(s => ({
+  const { paletteOpen, captureOpen, editOpen, searchOpen, archiveOpen, settingsOpen, noteFocusId } = useStore(s => ({
     paletteOpen: s.paletteOpen,
     captureOpen: s.captureOpen,
     editOpen: s.editOpen,
     searchOpen: s.searchOpen,
+    archiveOpen: s.archiveOpen,
     settingsOpen: s.settingsOpen,
     noteFocusId: s.noteFocusId
   }))
@@ -56,7 +57,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!paneActive) return
-      if (paletteOpen || captureOpen || editOpen || searchOpen || settingsOpen || noteFocusId) return
+      if (paletteOpen || captureOpen || editOpen || searchOpen || archiveOpen || settingsOpen || noteFocusId) return
       if (isInTextInput(e.target)) return
 
       const k = e.key
@@ -129,6 +130,22 @@ export function useGlobalKeymap(): void {
       const meta = e.metaKey || e.ctrlKey
       const s = useStore.getState()
 
+      // u → undo, ctrl-r → redo. Both also fire while archive is open so
+      // archive actions (restore / perma-delete) can be reverted in place.
+      // Suppressed inside text inputs and inside text-input-style modals.
+      const undoSuppressed = s.paletteOpen || s.captureOpen || s.editOpen ||
+        s.searchOpen || s.settingsOpen || s.noteFocusId || isInTextInput(e.target)
+      if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === 'r' && !undoSuppressed) {
+        e.preventDefault()
+        s.redo()
+        return
+      }
+      if (!meta && !e.altKey && !e.shiftKey && e.key === 'u' && !undoSuppressed) {
+        e.preventDefault()
+        s.undo()
+        return
+      }
+
       if (meta && e.key === 'k') {
         e.preventDefault()
         s.openCapture()
@@ -165,17 +182,13 @@ export function useGlobalKeymap(): void {
       if (meta && e.key === '1') { e.preventDefault(); s.setView('todo'); return }
       if (meta && e.key === '2') { e.preventDefault(); s.setView('calendar'); return }
       if (meta && e.key === '3') { e.preventDefault(); s.setView('notes'); return }
-      if (meta && e.key === '4') { e.preventDefault(); s.setView('archive'); return }
 
-      if (!meta && !isInTextInput(e.target) && !s.paletteOpen && !s.captureOpen && !s.searchOpen) {
+      if (!meta && !isInTextInput(e.target) && !s.paletteOpen && !s.captureOpen && !s.searchOpen && !s.archiveOpen && !s.editOpen && !s.settingsOpen && !s.noteFocusId) {
         if (e.key === '/') { e.preventDefault(); s.openSearch(); return }
+        if (e.key === 'A') { e.preventDefault(); s.openArchive(); return }
         if (e.key === 'n' && s.view === 'notes') {
           e.preventDefault()
           s.openCapture('note: ')
-        }
-        if (e.key === 'u') {
-          e.preventDefault()
-          s.restoreMostRecentDeleted()
         }
       }
 
@@ -184,6 +197,7 @@ export function useGlobalKeymap(): void {
         else if (s.captureOpen) s.closeCapture()
         else if (s.editOpen) s.closeEdit()
         else if (s.searchOpen) s.closeSearch()
+        else if (s.archiveOpen) s.closeArchive()
         else if (s.settingsOpen) s.closeSettings()
         else if (s.noteFocusId) s.closeNoteFocus()
       }

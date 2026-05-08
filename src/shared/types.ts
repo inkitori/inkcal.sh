@@ -45,9 +45,9 @@ export interface Settings {
   activeTheme: string
   globalHotkey: string
   transparency: boolean
-  defaultView: 'todo' | 'calendar' | 'notes' | 'archive'
+  defaultView: 'todo' | 'calendar' | 'notes'
   /** last view used; restored on next launch (incl. window recreate from transparency toggle) */
-  lastView?: 'todo' | 'calendar' | 'notes' | 'archive'
+  lastView?: 'todo' | 'calendar' | 'notes'
   /** when false, the notes editor is plain CodeMirror (no vim bindings) */
   vimEnabled: boolean
   notesMaxWidth: 'narrow' | 'medium' | 'wide' | 'full'

@@ -91,8 +91,7 @@ export default function Settings() {
             options={[
               { value: 'todo', label: 'todo' },
               { value: 'calendar', label: 'calendar' },
-              { value: 'notes', label: 'notes' },
-              { value: 'archive', label: 'archive' }
+              { value: 'notes', label: 'notes' }
             ]}
             onChange={(v) => setSettings({ defaultView: v as S['defaultView'] })}
           />
