@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import { join } from 'path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createWindow, getWindow } from './window'
 import { registerIpc } from './ipc'
@@ -22,6 +23,12 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     electronApp.setAppUserModelId('sh.inkcal.app')
+
+    // dev runs from node_modules/electron, so the dock/alt-tab icon defaults
+    // to electron's. packaged builds get the icon from the .app bundle.
+    if (!app.isPackaged && process.platform === 'darwin') {
+      app.dock?.setIcon(join(__dirname, '../../build/icon.png'))
+    }
 
     app.on('browser-window-created', (_e, win) => optimizer.watchWindowShortcuts(win))
 

@@ -22,7 +22,7 @@ export default function Header() {
 
       <div className="flex items-center gap-6 pl-[88px] pr-4 py-3">
         <h1 className="font-display text-2xl tracking-tight" style={{ color: 'var(--text)' }}>
-          inkcal.sh
+          inkcal
         </h1>
 
         <div className="font-mono text-[11px] uppercase flex items-center gap-2" style={{ color: 'var(--muted)' }}>

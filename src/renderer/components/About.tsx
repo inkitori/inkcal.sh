@@ -73,7 +73,7 @@ export default function About() {
       >
         <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>
-            {info?.productName ?? 'inkcal.sh'}
+            {info?.productName ?? 'inkcal'}
           </div>
           <div className="font-mono text-[11px] uppercase mt-1" style={{ color: 'var(--muted-2)' }}>
             v{info?.version ?? '…'}

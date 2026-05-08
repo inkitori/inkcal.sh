@@ -58,7 +58,7 @@
   },
   "build": {
     "appId": "sh.inkcal.app",
-    "productName": "inkcal.sh",
+    "productName": "inkcal",
     "directories": {
       "output": "release"
     },

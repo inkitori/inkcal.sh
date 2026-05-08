@@ -73,7 +73,7 @@ export function registerIpc() {
 
   ipcMain.handle('app:about', () => ({
     name: app.getName(),
-    productName: 'inkcal.sh',
+    productName: 'inkcal',
     version: app.getVersion(),
     author: 'enyouki',
     repo: 'https://github.com/inkitori/inkcal.sh',
