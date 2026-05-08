@@ -92,19 +92,11 @@ function recurringMatches(t: Task, iso: string): boolean {
   return false
 }
 
-function lastExpectedRecurring(t: Task, today: string): string | null {
-  for (let i = 1; i <= 7; i++) {
-    const d = addDaysISO(today, -i)
-    if (recurringMatches(t, d)) return d
-  }
-  return null
-}
-
 /**
  * Count items still requiring action: unchecked overdue one-off todos plus
- * recurring tasks whose most recent expected day was missed, today isn't a
- * scheduled day, and there's no completion since the missed day. Mirrors what
- * the renderer's overdue section shows minus rows already checked off.
+ * recurring tasks with a recent missed scheduled day. Mirrors the renderer's
+ * `nextRecurringSlot`: any completion (even off-schedule) acts as a checkpoint
+ * that retires older expected days, and the lookback respects task creation.
  */
 function selectOverdueCount(data: AppData): number {
   const today = todayLocalISO()
@@ -115,13 +107,22 @@ function selectOverdueCount(data: AppData): number {
       if (data.completions.some(c => c.taskId === t.id)) continue
       count++
     } else if (t.kind === 'recurring') {
+      // Today's obligation masks older misses — those land in Today, not Overdue.
       if (recurringMatches(t, today)) continue
-      const lastExpected = lastExpectedRecurring(t, today)
-      if (!lastExpected) continue
-      const taskCompletions = data.completions.filter(c => c.taskId === t.id)
-      if (taskCompletions.some(c => c.date === lastExpected)) continue
-      if (taskCompletions.some(c => c.date === today)) continue
-      count++
+      const taskComps = data.completions.filter(c => c.taskId === t.id)
+      // A catch-up tap stamps today; treat that as resolving the overdue.
+      if (taskComps.some(c => c.date === today)) continue
+      const sorted = taskComps.map(c => c.date).sort()
+      const lastCompleted = sorted[sorted.length - 1] ?? null
+      const createdDate = t.createdAt.slice(0, 10)
+      for (let i = 1; i <= 7; i++) {
+        const d = addDaysISO(today, -i)
+        if (d < createdDate) break
+        if (lastCompleted && d <= lastCompleted) break
+        if (!recurringMatches(t, d)) continue
+        count++
+        break
+      }
     }
   }
   return count
