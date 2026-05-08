@@ -159,7 +159,7 @@ export function useGlobalKeymap(): void {
         s.setSettings(patch)
         return
       }
-      if (meta && e.key === ';') {
+      if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === 'w') {
         e.preventDefault()
         if (s.settings.splitEnabled && s.settings.splitSecondary) {
           s.setFocusedPane(s.focusedPane === 'primary' ? 'secondary' : 'primary')

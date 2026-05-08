@@ -135,16 +135,27 @@ function Pane({ id, focused, onFocus, flex, children }: {
   return (
     <div
       onMouseDown={onFocus}
-      className="h-full overflow-hidden"
+      className="h-full overflow-hidden relative"
       style={{
         flex: `${flex} 1 0`,
         minWidth: 0,
-        borderRight: id === 'primary' ? '1px solid var(--border)' : undefined,
-        outline: focused ? '1px solid var(--accent-soft)' : 'none',
-        outlineOffset: '-1px'
+        borderRight: id === 'primary' ? '1px solid var(--border)' : undefined
       }}
     >
       <PaneProvider value={id}>{children}</PaneProvider>
+      {focused && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            outline: '2px solid var(--accent)',
+            outlineOffset: '-2px',
+            zIndex: 50
+          }}
+        />
+      )}
     </div>
   )
 }

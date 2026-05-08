@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { instancesForDate } from '@/lib/recurrence'
 import { isInTextInput } from '@/lib/keymap'
+import { usePaneActive } from '@/lib/PaneContext'
 import {
   addDays,
   fmtHour,
@@ -136,6 +137,7 @@ export default function CalendarView() {
   const tasks = useStore(s => s.tasks)
   const completions = useStore(s => s.completions)
   const toggle = useStore(s => s.toggleCompletion)
+  const paneActive = usePaneActive()
   const dates = mode === 'week' ? weekDates(anchor) : [anchor]
   const HOUR_PX = mode === 'week' ? HOUR_PX_WEEK : HOUR_PX_DAY
 
@@ -162,6 +164,7 @@ export default function CalendarView() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (!paneActive) return
       const s = useStore.getState()
       if (s.paletteOpen || s.captureOpen || s.editOpen) return
       if (isInTextInput(e.target)) return
@@ -179,7 +182,7 @@ export default function CalendarView() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mode])
+  }, [mode, paneActive])
   const currentMin = now.getHours() * 60 + now.getMinutes()
 
   const allBlocks = useMemo(
