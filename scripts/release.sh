@@ -53,7 +53,7 @@ fi
 
 # locate the .app — electron-builder puts it under release/mac-arm64 or release/mac
 APP_PATH=""
-for candidate in release/mac-arm64/inkcal.sh.app release/mac/inkcal.sh.app release/mac-universal/inkcal.sh.app; do
+for candidate in release/mac-arm64/inkcal.app release/mac/inkcal.app release/mac-universal/inkcal.app; do
   if [[ -d "$candidate" ]]; then
     APP_PATH="$candidate"
     break
@@ -66,10 +66,11 @@ if [[ -z "$APP_PATH" ]]; then
 fi
 
 echo "==> installing to /Applications..."
-rm -rf "/Applications/inkcal.sh.app"
+# clear out the new bundle path and any legacy inkcal.sh.app left from before the rename
+rm -rf "/Applications/inkcal.app" "/Applications/inkcal.sh.app"
 cp -R "$APP_PATH" /Applications/
 # ad-hoc sign so macOS gatekeeper + auto-updater behave consistently
-codesign --deep --force --sign - "/Applications/inkcal.sh.app" >/dev/null 2>&1 || true
+codesign --deep --force --sign - "/Applications/inkcal.app" >/dev/null 2>&1 || true
 
 if [[ $LOCAL_ONLY -eq 0 ]]; then
   git add package.json package-lock.json 2>/dev/null || git add package.json
@@ -79,5 +80,5 @@ if [[ $LOCAL_ONLY -eq 0 ]]; then
   git push origin "v$NEW_VERSION"
   echo "==> done. v$NEW_VERSION published. existing installs will pick it up on next launch (or within 6h)."
 else
-  echo "==> done. installed locally at /Applications/inkcal.sh.app"
+  echo "==> done. installed locally at /Applications/inkcal.app"
 fi

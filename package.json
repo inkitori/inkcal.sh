@@ -58,7 +58,7 @@
   },
   "build": {
     "appId": "sh.inkcal.app",
-    "productName": "inkcal.sh",
+    "productName": "inkcal",
     "directories": {
       "output": "release"
     },
@@ -77,11 +77,7 @@
         "dmg",
         "zip"
       ],
-      "category": "public.app-category.productivity",
-      "extendInfo": {
-        "CFBundleName": "inkcal",
-        "CFBundleDisplayName": "inkcal"
-      }
+      "category": "public.app-category.productivity"
     },
     "publish": {
       "provider": "github",
