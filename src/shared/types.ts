@@ -57,6 +57,8 @@ export interface Settings {
   notePreviewInFocus: boolean
   /** when true, schedule native macOS notifications for tasks */
   notificationsEnabled: boolean
+  /** how times of day are rendered throughout the app */
+  clockFormat: '12h' | '24h'
 }
 
 export interface AppData {
@@ -117,7 +119,8 @@ export const DEFAULT_DATA: AppData = {
     splitSecondary: null,
     splitRatio: 0.5,
     notePreviewInFocus: false,
-    notificationsEnabled: false
+    notificationsEnabled: false,
+    clockFormat: '12h'
   },
   tasks: [],
   completions: []

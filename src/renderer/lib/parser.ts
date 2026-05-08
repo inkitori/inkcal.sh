@@ -1,5 +1,7 @@
 import type { Task, Recurrence, Weekday } from '@/../shared/types'
 import { WEEKDAYS } from '@/../shared/types'
+import type { ClockFormat } from '@/../shared/time'
+import { formatTimeRange } from '@/../shared/time'
 import { addDays, todayISO, weekdayOf, fromISODate, diffDays, toISODate } from './date'
 import { nanoid } from 'nanoid'
 import * as chrono from 'chrono-node'
@@ -153,7 +155,7 @@ export function scheduleOnlyToInput(task: Task): string {
 /**
  * Short live-preview hint for ScheduleInput.
  */
-export function previewFor(input: string): string {
+export function previewFor(input: string, fmt: ClockFormat = '24h'): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
 
@@ -164,13 +166,13 @@ export function previewFor(input: string): string {
 
   const rec = tryRecurring(trimmed, false)
   if (rec) {
-    const parts = [recurrencePreview(rec.recurrence), rec.title].filter(Boolean)
+    const parts = [recurrencePreview(rec.recurrence, fmt), rec.title].filter(Boolean)
     return parts.length ? parts.join(' · ') : ''
   }
 
   const ch = tryChrono(trimmed, false)
   if (ch) {
-    const sched = [duePreview(ch.due), timePreview(ch.time, ch.endTime)].filter(Boolean).join(' · ')
+    const sched = [duePreview(ch.due), timePreview(ch.time, ch.endTime, fmt)].filter(Boolean).join(' · ')
     return ch.title ? `${sched} · ${ch.title}` : sched
   }
 
@@ -180,16 +182,16 @@ export function previewFor(input: string): string {
 /**
  * Schedule-only preview for the Edit modal's `when` field.
  */
-export function previewSchedule(input: string): string {
+export function previewSchedule(input: string, fmt: ClockFormat = '24h'): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
   const result = parseScheduleOnly(trimmed)
   if (!result) return ''
   if (result.kind === 'recurring' && result.recurrence) {
-    return recurrencePreview(result.recurrence)
+    return recurrencePreview(result.recurrence, fmt)
   }
   if (result.kind === 'todo') {
-    return [duePreview(result.due), timePreview(result.time, result.endTime)].filter(Boolean).join(' · ')
+    return [duePreview(result.due), timePreview(result.time, result.endTime, fmt)].filter(Boolean).join(' · ')
   }
   return ''
 }
@@ -488,17 +490,16 @@ function eqDays(a: Weekday[], b: Weekday[]): boolean {
   return true
 }
 
-function recurrencePreview(r: Recurrence): string {
+function recurrencePreview(r: Recurrence, fmt: ClockFormat = '24h'): string {
   const days = r.daily ? 'day' : recurrenceShort(r)
-  const time = timePreview(r.start, r.end)
+  const time = timePreview(r.start, r.end, fmt)
   const sched = days ? `every ${days}` : ''
   return [sched, time].filter(Boolean).join(' · ')
 }
 
-function timePreview(start?: string, end?: string): string {
+function timePreview(start?: string, end?: string, fmt: ClockFormat = '24h'): string {
   if (!start) return ''
-  if (end) return `${start}–${end}`
-  return start
+  return formatTimeRange(start, end, fmt)
 }
 
 function duePreview(due: string | null | undefined): string {

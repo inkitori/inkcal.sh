@@ -53,6 +53,16 @@ export default function Settings() {
             onChange={(v) => setSettings({ notePreviewInFocus: v })}
           />
 
+          <RadioField
+            label="clock"
+            value={settings.clockFormat}
+            options={[
+              { value: '12h', label: 'am/pm' },
+              { value: '24h', label: '24h' }
+            ]}
+            onChange={(v) => setSettings({ clockFormat: v as S['clockFormat'] })}
+          />
+
           <ToggleField
             label="notifications"
             hint="remind you for todos with a time and recurring tasks. dock icon shows overdue count."

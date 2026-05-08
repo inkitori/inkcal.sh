@@ -1,5 +1,6 @@
 import { app, Notification } from 'electron'
 import type { AppData, Completion, Recurrence, Task, Weekday } from '../shared/types'
+import { formatTimeRange } from '../shared/time'
 import { getWindow } from './window'
 
 const WEEKDAY_BY_INDEX: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -71,14 +72,59 @@ function isCompletedOnDate(taskId: string, dateISO: string, completions: Complet
   return completions.some(c => c.taskId === taskId && c.date === dateISO)
 }
 
+function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + n)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+function weekdayOfISO(iso: string): Weekday {
+  const [y, m, d] = iso.split('-').map(Number)
+  return WEEKDAY_BY_INDEX[new Date(y, m - 1, d).getDay()]
+}
+
+function recurringMatches(t: Task, iso: string): boolean {
+  const r = t.recurrence
+  if (!r) return false
+  if (r.days?.length) return r.days.includes(weekdayOfISO(iso))
+  if (r.daily) return true
+  return false
+}
+
+function lastExpectedRecurring(t: Task, today: string): string | null {
+  for (let i = 1; i <= 7; i++) {
+    const d = addDaysISO(today, -i)
+    if (recurringMatches(t, d)) return d
+  }
+  return null
+}
+
+/**
+ * Count items still requiring action: unchecked overdue one-off todos plus
+ * recurring tasks whose most recent expected day was missed, today isn't a
+ * scheduled day, and there's no completion since the missed day. Mirrors what
+ * the renderer's overdue section shows minus rows already checked off.
+ */
 function selectOverdueCount(data: AppData): number {
   const today = todayLocalISO()
-  return data.tasks.filter(t =>
-    t.kind === 'todo' &&
-    t.due &&
-    t.due < today &&
-    !data.completions.some(c => c.taskId === t.id && c.date !== today)
-  ).length
+  let count = 0
+  for (const t of data.tasks) {
+    if (t.kind === 'todo') {
+      if (!t.due || t.due >= today) continue
+      if (data.completions.some(c => c.taskId === t.id)) continue
+      count++
+    } else if (t.kind === 'recurring') {
+      if (recurringMatches(t, today)) continue
+      const lastExpected = lastExpectedRecurring(t, today)
+      if (!lastExpected) continue
+      const taskCompletions = data.completions.filter(c => c.taskId === t.id)
+      if (taskCompletions.some(c => c.date === lastExpected)) continue
+      if (taskCompletions.some(c => c.date === today)) continue
+      count++
+    }
+  }
+  return count
 }
 
 function updateBadge(data: AppData) {
@@ -114,13 +160,14 @@ function showTaskNotification(task: Task, body?: string) {
 
 function scheduleTodos(data: AppData) {
   const now = Date.now()
+  const fmt = data.settings.clockFormat
   for (const t of data.tasks) {
     if (t.kind !== 'todo' || !t.due) continue
     if (isCompletedOnOrAfter(t.id, t.due, data.completions)) continue
     if (!t.time) continue
     const fireAt = dateAtLocal(t.due, t.time)
     if (fireAt == null || fireAt <= now) continue
-    const body = t.endTime ? `${t.time}–${t.endTime}` : t.time
+    const body = formatTimeRange(t.time, t.endTime, fmt)
     scheduleAt(`todo:${t.id}`, fireAt, () => showTaskNotification(t, body))
   }
 }
@@ -129,6 +176,7 @@ function scheduleRecurring(data: AppData) {
   const now = Date.now()
   const today = todayLocalISO()
   const todayWd = WEEKDAY_BY_INDEX[new Date().getDay()]
+  const fmt = data.settings.clockFormat
   for (const t of data.tasks) {
     if (t.kind !== 'recurring') continue
     const r: Recurrence | undefined = t.recurrence
@@ -138,7 +186,7 @@ function scheduleRecurring(data: AppData) {
     if (isCompletedOnDate(t.id, today, data.completions)) continue
     const fireAt = dateAtLocal(today, r.start)
     if (fireAt == null || fireAt <= now) continue
-    const body = r.end ? `${r.start}–${r.end}` : r.start
+    const body = formatTimeRange(r.start, r.end, fmt)
     scheduleAt(`recur:${t.id}:${today}`, fireAt, () => showTaskNotification(t, body))
   }
 }

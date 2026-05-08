@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { dayProgressPct, fmtClock, fmtHeaderDate } from '@/lib/date'
+import { dayProgressPct, fmtHeaderDate } from '@/lib/date'
+import { formatClock } from '@/../shared/time'
 import { useStore } from '@/lib/store'
 
 export default function Header() {
   const view = useStore(s => s.view)
   const setView = useStore(s => s.setView)
+  const clockFormat = useStore(s => s.settings.clockFormat)
 
   const [now, setNow] = useState(new Date())
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function Header() {
         <div className="font-mono text-[11px] uppercase flex items-center gap-2" style={{ color: 'var(--muted)' }}>
           <span>{fmtHeaderDate(now)}</span>
           <span style={{ color: 'var(--muted-2)' }}>·</span>
-          <span>{fmtClock(now)}</span>
+          <span>{formatClock(now, clockFormat)}</span>
           <span style={{ color: 'var(--muted-2)' }}>·</span>
           <span style={{ color: 'var(--accent)' }}>{Math.round(pct)}%</span>
         </div>

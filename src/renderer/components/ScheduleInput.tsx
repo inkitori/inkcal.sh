@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react'
 import { previewFor } from '@/lib/parser'
+import { useStore } from '@/lib/store'
 
 interface Props {
   value: string
@@ -20,7 +21,8 @@ const ScheduleInput = forwardRef<HTMLInputElement, Props>(function ScheduleInput
 ) {
   const trimmed = value.trim()
   const isEmpty = trimmed === ''
-  const previewFn = preview ?? previewFor
+  const clockFormat = useStore(s => s.settings.clockFormat)
+  const previewFn = preview ?? ((raw: string) => previewFor(raw, clockFormat))
   const currentPreview = useMemo(() => previewFn(value), [previewFn, value])
   const [lastGoodPreview, setLastGoodPreview] = useState(currentPreview)
 

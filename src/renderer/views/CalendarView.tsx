@@ -5,11 +5,11 @@ import { isInTextInput } from '@/lib/keymap'
 import { usePaneActive } from '@/lib/PaneContext'
 import {
   addDays,
-  fmtHour,
   isToday,
   todayISO,
   weekDates
 } from '@/lib/date'
+import { formatHour } from '@/../shared/time'
 import type { Completion, Task } from '@/../shared/types'
 
 const HOUR_PX_WEEK = 36
@@ -136,6 +136,7 @@ export default function CalendarView() {
   const tasks = useStore(s => s.tasks)
   const completions = useStore(s => s.completions)
   const toggle = useStore(s => s.toggleCompletion)
+  const clockFormat = useStore(s => s.settings.clockFormat)
   const paneActive = usePaneActive()
   const dates = mode === 'week' ? weekDates(anchor) : [anchor]
   const HOUR_PX = mode === 'week' ? HOUR_PX_WEEK : HOUR_PX_DAY
@@ -236,7 +237,7 @@ export default function CalendarView() {
             <div style={{ height: 32 }} />
             {HOURS.map(h => (
               <div key={h} className="px-2" style={{ height: HOUR_PX }}>
-                {fmtHour(h)}
+                {formatHour(h, clockFormat)}
               </div>
             ))}
           </div>

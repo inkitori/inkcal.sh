@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Checkbox from './Checkbox'
 import { dueLabel } from '@/lib/date'
+import { formatTimeRange } from '@/../shared/time'
+import { useStore } from '@/lib/store'
 import type { Task } from '@/../shared/types'
 
 interface Props {
@@ -35,9 +37,10 @@ export default function TaskRow({
     textDecorationColor: 'var(--muted-2)'
   }
 
+  const clockFormat = useStore(s => s.settings.clockFormat)
   const time = task.time ?? task.recurrence?.start
   const endTime = task.endTime ?? task.recurrence?.end
-  const timeLabel = time && endTime ? `${time}–${endTime}` : time
+  const timeLabel = time ? formatTimeRange(time, endTime, clockFormat) : undefined
   const due = task.due
   const label = showDue && due ? dueLabel(due) : null
 

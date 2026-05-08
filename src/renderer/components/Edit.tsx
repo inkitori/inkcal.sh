@@ -10,6 +10,7 @@ export default function Edit() {
   const close = useStore(s => s.closeEdit)
   const tasks = useStore(s => s.tasks)
   const updateTask = useStore(s => s.updateTask)
+  const clockFormat = useStore(s => s.settings.clockFormat)
 
   const task = useMemo(
     () => tasks.find(t => t.id === taskId) ?? null,
@@ -144,7 +145,7 @@ export default function Edit() {
               <ScheduleInput
                 value={when}
                 onChange={(v) => { setWhen(v); setError(null) }}
-                preview={previewSchedule}
+                preview={(raw) => previewSchedule(raw, clockFormat)}
                 placeholder="e.g. today 10:00, every friday at 14, mwf 10-11, may 12"
                 className="flex-1 flex flex-col gap-1"
                 inputClassName="w-full bg-transparent outline-none font-mono text-[12px]"
