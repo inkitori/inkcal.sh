@@ -73,6 +73,25 @@ export function dueLabel(due: string | null | undefined): string | null {
   return due
 }
 
+/**
+ * Label for an overdue recurring task. `lastCompleted` is the most recent
+ * completion date (any date) for the task — when present, the label leans
+ * "last done Nd ago"; otherwise "missed …".
+ */
+export function overdueLabel(missedISO: string, todayISO: string, lastCompleted: string | null): string {
+  const daysSinceMissed = diffDays(todayISO, missedISO)
+  if (daysSinceMissed === 1) return 'missed yesterday'
+  if (lastCompleted) {
+    const daysSinceDone = diffDays(todayISO, lastCompleted)
+    if (daysSinceDone >= 1) return `last done ${daysSinceDone}d ago`
+  }
+  if (daysSinceMissed <= 7) {
+    const wd = weekdayOf(missedISO)
+    return `missed ${wd}`
+  }
+  return `missed ${daysSinceMissed}d ago`
+}
+
 export function fmtHour(h: number): string {
   return `${String(h).padStart(2, '0')}:00`
 }

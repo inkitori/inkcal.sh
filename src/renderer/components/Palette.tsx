@@ -26,6 +26,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
   const tasks = useStore(s => s.tasks)
   const openAbout = useStore(s => s.openAbout)
   const openUpdateCheck = useStore(s => s.openUpdateCheck)
+  const openSettings = useStore(s => s.openSettings)
   const inputRef = useRef<HTMLInputElement>(null)
   const [q, setQ] = useState('')
   const [cursor, setCursor] = useState(0)
@@ -114,6 +115,53 @@ export default function Palette({ themes, reloadThemes }: Props) {
       run: () => { window.inkcal.revealData() }
     })
     out.push({
+      id: 'cmd:settings',
+      label: 'open settings',
+      hint: '⌘,',
+      type: 'command',
+      run: () => { openSettings() }
+    })
+    out.push({
+      id: 'cmd:toggleSplit',
+      label: settings.splitEnabled ? 'disable split view' : 'enable split view',
+      hint: '⌘\\',
+      type: 'command',
+      run: async () => {
+        const cur = settings.splitEnabled
+        const patch: Parameters<typeof setSettings>[0] = { splitEnabled: !cur }
+        if (!cur && !settings.splitSecondary) {
+          const others: ('todo' | 'calendar' | 'notes')[] = ['todo', 'calendar', 'notes']
+          const main = useStore.getState().view
+          patch.splitSecondary = others.find(o => o !== main) ?? 'notes'
+        }
+        await setSettings(patch)
+      }
+    })
+    out.push({
+      id: 'cmd:swapPanes',
+      label: 'swap panes',
+      hint: 'command',
+      type: 'command',
+      run: async () => {
+        if (!settings.splitEnabled || !settings.splitSecondary) return
+        const main = useStore.getState().view
+        const sec = settings.splitSecondary
+        setView(sec)
+        await setSettings({ splitSecondary: main })
+      }
+    })
+    for (const v of ['todo', 'calendar', 'notes'] as const) {
+      out.push({
+        id: `cmd:setSecondary:${v}`,
+        label: `secondary pane: ${v}`,
+        hint: settings.splitSecondary === v ? 'active' : 'command',
+        type: 'command',
+        run: async () => {
+          await setSettings({ splitSecondary: v, splitEnabled: true })
+        }
+      })
+    }
+    out.push({
       id: 'cmd:about',
       label: 'about',
       hint: 'command',
@@ -165,7 +213,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
     }
 
     return out
-  }, [themes, tasks, settings.activeTheme, settings.transparency])
+  }, [themes, tasks, settings.activeTheme, settings.transparency, settings.splitEnabled, settings.splitSecondary])
 
   const filtered = useMemo(() => {
     if (!q) return items.slice(0, 10)

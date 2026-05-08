@@ -7,8 +7,8 @@ import {
   selectTodayTodos,
   selectUpcomingTodos
 } from '@/lib/store'
-import { instancesForDate } from '@/lib/recurrence'
-import { todayISO, weekdayOf } from '@/lib/date'
+import { instancesForDate, selectOverdueRecurring } from '@/lib/recurrence'
+import { overdueLabel as fmtOverdueLabel, todayISO, weekdayOf } from '@/lib/date'
 import { recurrenceShort } from '@/lib/parser'
 import Section from '@/components/Section'
 import TaskRow from '@/components/TaskRow'
@@ -20,9 +20,17 @@ interface Row {
   date: string  // for recurring instances; for one-offs same as due or today
   isCompleted: boolean
   isOverdue?: boolean
+  /** present on missed recurring rows in the overdue section */
+  overdueLabel?: string
+  /** sortable date used for ordering inside overdue (missed-date for recurring, due for todos) */
+  overdueSortDate?: string
   showDue?: boolean
   scheduleOnly?: boolean
   recurrenceLabel?: string
+}
+
+function sinkCompleted(rs: Row[]): Row[] {
+  return [...rs].sort((a, b) => Number(a.isCompleted) - Number(b.isCompleted))
 }
 
 export default function TodoView() {
@@ -37,10 +45,15 @@ export default function TodoView() {
   const [selected, setSelected] = useState(0)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const lastToggledIdRef = useRef<string | null>(null)
 
   const today = todayISO()
 
   const overdue = useMemo(() => selectOverdueTodos({ tasks, completions } as any), [tasks, completions])
+  const overdueRecurring = useMemo(
+    () => selectOverdueRecurring(tasks, completions, today),
+    [tasks, completions, today]
+  )
   const todayTodos = useMemo(() => selectTodayTodos({ tasks, completions } as any), [tasks, completions])
   const upcoming = useMemo(() => selectUpcomingTodos({ tasks, completions } as any), [tasks, completions])
   const inbox = useMemo(() => selectInboxTodos({ tasks, completions } as any), [tasks, completions])
@@ -50,46 +63,93 @@ export default function TodoView() {
     return selectRecurring({ tasks, completions } as any).filter(t => {
       const r = t.recurrence
       if (!r) return false
+      if (r.days?.length) {
+        if (r.days.includes(wd)) return false
+        return true
+      }
       if (r.daily) return false
-      if (r.days?.includes(wd)) return false
       return true
     }).sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
   }, [tasks, completions, today])
 
   const rows: Row[] = useMemo(() => {
-    const r: Row[] = []
-    for (const t of overdue) r.push({ task: t, date: today, isCompleted: false, isOverdue: true, showDue: true })
-    for (const inst of todayRecurring) r.push({
-      task: inst.task,
-      date: today,
-      isCompleted: inst.isCompleted,
-      showDue: false,
-      recurrenceLabel: recurrenceShort(inst.task.recurrence)
-    })
-    for (const t of todayTodos) {
-      const completed = completions.some(c => c.taskId === t.id)
-      r.push({ task: t, date: today, isCompleted: completed, showDue: false })
-    }
-    for (const t of upcoming) {
-      const completed = completions.some(c => c.taskId === t.id)
-      r.push({ task: t, date: t.due ?? today, isCompleted: completed, showDue: true })
-    }
-    for (const t of inbox) {
-      const completed = completions.some(c => c.taskId === t.id)
-      r.push({ task: t, date: today, isCompleted: completed, showDue: false })
-    }
-    for (const t of recurringOffSchedule) {
-      r.push({
-        task: t,
-        date: today,
-        isCompleted: false,
-        showDue: false,
-        scheduleOnly: true,
-        recurrenceLabel: recurrenceShort(t.recurrence)
+    // Overdue: merge one-off and recurring, sorted by missed/due date ascending.
+    const overdueMerged: Row[] = []
+    for (const t of overdue) {
+      overdueMerged.push({
+        task: t, date: today, isCompleted: false, isOverdue: true, showDue: true,
+        overdueSortDate: t.due ?? today
       })
     }
-    return r
-  }, [overdue, todayRecurring, todayTodos, upcoming, inbox, recurringOffSchedule, completions, today])
+    for (const o of overdueRecurring) {
+      overdueMerged.push({
+        task: o.task,
+        date: today, // completing creates a Completion for today, not the missed date
+        isCompleted: false,
+        isOverdue: true,
+        showDue: false,
+        overdueLabel: fmtOverdueLabel(o.lastExpected, today, o.lastCompleted),
+        overdueSortDate: o.lastExpected
+      })
+    }
+    overdueMerged.sort((a, b) => {
+      const ad = a.overdueSortDate ?? ''
+      const bd = b.overdueSortDate ?? ''
+      const c = ad.localeCompare(bd)
+      if (c !== 0) return c
+      return (a.task.title ?? '').localeCompare(b.task.title ?? '')
+    })
+
+    // Suppress today's recurring instance when the task is already showing as
+    // overdue — otherwise the same task would render twice.
+    const overdueIds = new Set(overdueRecurring.map(o => o.task.id))
+    const todayRecurringRows: Row[] = todayRecurring
+      .filter(inst => !overdueIds.has(inst.task.id))
+      .map(inst => ({
+        task: inst.task,
+        date: today,
+        isCompleted: inst.isCompleted,
+        showDue: false,
+        recurrenceLabel: recurrenceShort(inst.task.recurrence)
+      }))
+
+    const todayTodoRows: Row[] = todayTodos.map(t => ({
+      task: t, date: today,
+      isCompleted: completions.some(c => c.taskId === t.id),
+      showDue: false
+    }))
+
+    const todaySection = sinkCompleted([...todayRecurringRows, ...todayTodoRows])
+
+    const upcomingRows: Row[] = sinkCompleted(upcoming.map(t => ({
+      task: t, date: t.due ?? today,
+      isCompleted: completions.some(c => c.taskId === t.id),
+      showDue: true
+    })))
+
+    const inboxRows: Row[] = sinkCompleted(inbox.map(t => ({
+      task: t, date: today,
+      isCompleted: completions.some(c => c.taskId === t.id),
+      showDue: false
+    })))
+
+    const offScheduleRows: Row[] = recurringOffSchedule.map(t => ({
+      task: t,
+      date: today,
+      isCompleted: false,
+      showDue: false,
+      scheduleOnly: true,
+      recurrenceLabel: recurrenceShort(t.recurrence)
+    }))
+
+    return [
+      ...overdueMerged,
+      ...todaySection,
+      ...upcomingRows,
+      ...inboxRows,
+      ...offScheduleRows
+    ]
+  }, [overdue, overdueRecurring, todayRecurring, todayTodos, upcoming, inbox, recurringOffSchedule, completions, today])
 
   const safeIdx = Math.min(selected, Math.max(0, rows.length - 1))
 
@@ -101,6 +161,16 @@ export default function TodoView() {
     if (idx >= 0) setSelected(idx)
     setPendingSelectId(null)
   }, [pendingSelectId, rows, setPendingSelectId])
+
+  // After toggling, the row may have sunk to the bottom of its section; follow
+  // the cursor to the same task's new index.
+  useEffect(() => {
+    const id = lastToggledIdRef.current
+    if (!id) return
+    const idx = rows.findIndex(r => r.task.id === id)
+    if (idx >= 0) setSelected(idx)
+    lastToggledIdRef.current = null
+  }, [rows])
 
   useListKeymap({
     onMove: (delta) => {
@@ -115,6 +185,7 @@ export default function TodoView() {
     onToggle: () => {
       const row = rows[safeIdx]
       if (!row || row.scheduleOnly) return
+      lastToggledIdRef.current = row.task.id
       toggle(row.task.id, row.date)
     },
     onDelete: () => {
@@ -177,7 +248,11 @@ export default function TodoView() {
           showTime
           hideCheckbox={row.scheduleOnly}
           recurrenceLabel={row.recurrenceLabel}
-          onToggle={row.scheduleOnly ? undefined : () => toggle(row.task.id, row.date)}
+          overdueLabel={row.overdueLabel}
+          onToggle={row.scheduleOnly ? undefined : () => {
+            lastToggledIdRef.current = row.task.id
+            toggle(row.task.id, row.date)
+          }}
           onClick={() => setSelected(idx)}
           onRenameSubmit={(text) => {
             updateTask(row.task.id, { title: text })

@@ -12,13 +12,15 @@ interface Props {
   startMode: 'normal' | 'insert'
   onCommit: (value: string) => void
   onModeChange?: (mode: VimMode) => void
+  vimEnabled?: boolean
 }
 
 export default function VimEditor({
   initialValue,
   startMode,
   onCommit,
-  onModeChange
+  onModeChange,
+  vimEnabled = true
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -78,42 +80,49 @@ export default function VimEditor({
       '&.cm-editor': { outline: 'none' }
     })
 
+    const extensions = [
+      ...(vimEnabled ? [vim()] : []),
+      history(),
+      drawSelection(),
+      markdown(),
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+      theme,
+      EditorView.lineWrapping,
+      EditorView.domEventHandlers({ blur: commit })
+    ]
+
     const view = new EditorView({
       parent: hostRef.current,
       state: EditorState.create({
         doc: initialValue,
-        extensions: [
-          vim(),
-          history(),
-          drawSelection(),
-          markdown(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
-          theme,
-          EditorView.lineWrapping,
-          EditorView.domEventHandlers({ blur: commit })
-        ]
+        extensions
       })
     })
     viewRef.current = view
 
-    const cm = getCM(view)
-    if (cm) {
-      bridgeUnnamedRegisterToClipboard()
+    if (vimEnabled) {
+      const cm = getCM(view)
+      if (cm) {
+        bridgeUnnamedRegisterToClipboard()
 
-      cm.on('vim-mode-change', (e: { mode: VimMode }) => {
-        modeRef.current = e.mode
-        onModeChangeRef.current?.(e.mode)
-      })
+        cm.on('vim-mode-change', (e: { mode: VimMode }) => {
+          modeRef.current = e.mode
+          onModeChangeRef.current?.(e.mode)
+        })
 
-      // If user wanted insert mode, push vim into insert. Default is normal.
-      if (startMode === 'insert') {
-        Vim.handleKey(cm, 'i', 'macro')
-        modeRef.current = 'insert'
-        onModeChangeRef.current?.('insert')
-      } else {
-        modeRef.current = 'normal'
-        onModeChangeRef.current?.('normal')
+        // If user wanted insert mode, push vim into insert. Default is normal.
+        if (startMode === 'insert') {
+          Vim.handleKey(cm, 'i', 'macro')
+          modeRef.current = 'insert'
+          onModeChangeRef.current?.('insert')
+        } else {
+          modeRef.current = 'normal'
+          onModeChangeRef.current?.('normal')
+        }
       }
+    } else {
+      // plain mode: behave as if always in 'insert' for the Esc-commit handler
+      modeRef.current = 'insert'
     }
 
     view.focus()
@@ -126,14 +135,15 @@ export default function VimEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Capture-phase keydown so we see Esc *before* vim handles it. If we're
-  // already in normal mode, second Esc commits and exits.
+  // Capture-phase keydown so we see Esc *before* vim handles it. With vim:
+  // first Esc returns to normal, second Esc commits. Without vim: Esc commits
+  // immediately.
   useEffect(() => {
     const el = hostRef.current
     if (!el) return
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
-      if (modeRef.current === 'normal') {
+      if (!vimEnabled || modeRef.current === 'normal') {
         e.preventDefault()
         e.stopPropagation()
         commitRef.current()
@@ -142,7 +152,7 @@ export default function VimEditor({
     }
     el.addEventListener('keydown', onKeyDown, true)
     return () => el.removeEventListener('keydown', onKeyDown, true)
-  }, [])
+  }, [vimEnabled])
 
   return <div ref={hostRef} className="w-full" />
 }

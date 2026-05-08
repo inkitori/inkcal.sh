@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from './store'
+import { usePaneActive } from './PaneContext'
 
 interface ListKeyHandlers {
   onMove?: (delta: number) => void
@@ -21,6 +22,8 @@ interface ListKeyHandlers {
   // Half-page jumps: Ctrl-d / Ctrl-u. Caller decides the row count.
   onHalfPageDown?: () => void
   onHalfPageUp?: () => void
+  /** `f` key — focus / fullscreen the selected item. */
+  onFocusKey?: () => void
 }
 
 let lastG = 0
@@ -32,6 +35,9 @@ export function isInTextInput(target: EventTarget | null): boolean {
   const tag = target.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA') return true
   if (target.isContentEditable) return true
+  // CodeMirror dispatches some keys with `e.target` set to a wrapping host whose
+  // `isContentEditable` is false, even though the inner `.cm-content` is editable.
+  if (target.closest('.cm-editor')) return true
   return false
 }
 
@@ -40,15 +46,19 @@ export function isInTextInput(target: EventTarget | null): boolean {
  * suppress when typing in an input. `paletteOpen`/`captureOpen` short-circuit.
  */
 export function useListKeymap(handlers: ListKeyHandlers): void {
-  const { paletteOpen, captureOpen, editOpen, searchOpen } = useStore(s => ({
+  const { paletteOpen, captureOpen, editOpen, searchOpen, settingsOpen, noteFocusId } = useStore(s => ({
     paletteOpen: s.paletteOpen,
     captureOpen: s.captureOpen,
     editOpen: s.editOpen,
-    searchOpen: s.searchOpen
+    searchOpen: s.searchOpen,
+    settingsOpen: s.settingsOpen,
+    noteFocusId: s.noteFocusId
   }))
+  const paneActive = usePaneActive()
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (paletteOpen || captureOpen || editOpen || searchOpen) return
+      if (!paneActive) return
+      if (paletteOpen || captureOpen || editOpen || searchOpen || settingsOpen || noteFocusId) return
       if (isInTextInput(e.target)) return
 
       const k = e.key
@@ -84,6 +94,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
       if (k === 'o') { e.preventDefault(); handlers.onOpenBelow?.(); return }
       if (k === 'e') { e.preventDefault(); handlers.onEdit?.(); return }
       if (k === 'i') { e.preventDefault(); handlers.onRename?.(); return }
+      if (k === 'f') { e.preventDefault(); handlers.onFocusKey?.(); return }
       if (k === 'G') { e.preventDefault(); handlers.onBottom?.(); return }
       if (k === 'g') {
         const now = Date.now()
@@ -112,7 +123,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [handlers, paletteOpen, captureOpen, editOpen, searchOpen])
+  }, [handlers, paletteOpen, captureOpen, editOpen, searchOpen, settingsOpen, noteFocusId, paneActive])
 }
 
 /** Global keymap for app-level shortcuts: cmd+1/2/3, cmd+k, cmd+p */
@@ -130,6 +141,22 @@ export function useGlobalKeymap(): void {
       if (meta && e.key === 'p') {
         e.preventDefault()
         s.openPalette()
+        return
+      }
+      if (meta && e.key === ',') {
+        e.preventDefault()
+        s.openSettings()
+        return
+      }
+      if (meta && e.key === '\\') {
+        e.preventDefault()
+        const cur = s.settings.splitEnabled
+        const patch: { splitEnabled: boolean; splitSecondary?: 'todo' | 'calendar' | 'notes' } = { splitEnabled: !cur }
+        if (!cur && !s.settings.splitSecondary) {
+          const others: ('todo' | 'calendar' | 'notes')[] = ['todo', 'calendar', 'notes']
+          patch.splitSecondary = others.find(o => o !== s.view) ?? 'notes'
+        }
+        s.setSettings(patch)
         return
       }
       if (meta && e.key === '1') { e.preventDefault(); s.setView('todo'); return }
@@ -159,6 +186,8 @@ export function useGlobalKeymap(): void {
         else if (s.captureOpen) s.closeCapture()
         else if (s.editOpen) s.closeEdit()
         else if (s.searchOpen) s.closeSearch()
+        else if (s.settingsOpen) s.closeSettings()
+        else if (s.noteFocusId) s.closeNoteFocus()
       }
     }
     window.addEventListener('keydown', onKey)

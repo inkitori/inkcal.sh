@@ -29,6 +29,9 @@ interface State {
   searchOpen: boolean
   aboutOpen: boolean
   updateCheckOpen: boolean
+  settingsOpen: boolean
+  noteFocusId: string | null
+  focusedPane: 'primary' | 'secondary'
   pendingSelectId: string | null
   undoStack: UndoEntry[]
 
@@ -51,6 +54,11 @@ interface State {
   closeAbout: () => void
   openUpdateCheck: () => void
   closeUpdateCheck: () => void
+  openSettings: () => void
+  closeSettings: () => void
+  openNoteFocus: (id: string) => void
+  closeNoteFocus: () => void
+  setFocusedPane: (p: 'primary' | 'secondary') => void
   setPendingSelectId: (id: string | null) => void
 
   /** mutations */
@@ -96,6 +104,9 @@ export const useStore = create<State>((set, get) => ({
   searchOpen: false,
   aboutOpen: false,
   updateCheckOpen: false,
+  settingsOpen: false,
+  noteFocusId: null,
+  focusedPane: 'primary',
   pendingSelectId: null,
   undoStack: [],
 
@@ -131,18 +142,23 @@ export const useStore = create<State>((set, get) => ({
     set(s => ({ view: v, settings: { ...s.settings, lastView: v } }))
     persist(get)
   },
-  openPalette() { set({ paletteOpen: true, captureOpen: false, editOpen: false, searchOpen: false }) },
+  openPalette() { set({ paletteOpen: true, captureOpen: false, editOpen: false, searchOpen: false, settingsOpen: false }) },
   closePalette() { set({ paletteOpen: false }) },
-  openCapture(prefill = '') { set({ captureOpen: true, paletteOpen: false, editOpen: false, searchOpen: false, capturePrefill: prefill }) },
+  openCapture(prefill = '') { set({ captureOpen: true, paletteOpen: false, editOpen: false, searchOpen: false, settingsOpen: false, capturePrefill: prefill }) },
   closeCapture() { set({ captureOpen: false, capturePrefill: '' }) },
-  openEdit(id) { set({ editOpen: true, editTaskId: id, captureOpen: false, paletteOpen: false, searchOpen: false }) },
+  openEdit(id) { set({ editOpen: true, editTaskId: id, captureOpen: false, paletteOpen: false, searchOpen: false, settingsOpen: false }) },
   closeEdit() { set({ editOpen: false, editTaskId: null }) },
-  openSearch() { set({ searchOpen: true, paletteOpen: false, captureOpen: false, editOpen: false }) },
+  openSearch() { set({ searchOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, settingsOpen: false }) },
   closeSearch() { set({ searchOpen: false }) },
-  openAbout() { set({ aboutOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false }) },
+  openAbout() { set({ aboutOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false, settingsOpen: false }) },
   closeAbout() { set({ aboutOpen: false }) },
-  openUpdateCheck() { set({ updateCheckOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false, aboutOpen: false }) },
+  openUpdateCheck() { set({ updateCheckOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false, aboutOpen: false, settingsOpen: false }) },
   closeUpdateCheck() { set({ updateCheckOpen: false }) },
+  openSettings() { set({ settingsOpen: true, paletteOpen: false, captureOpen: false, editOpen: false, searchOpen: false, aboutOpen: false, updateCheckOpen: false }) },
+  closeSettings() { set({ settingsOpen: false }) },
+  openNoteFocus(id) { set({ noteFocusId: id }) },
+  closeNoteFocus() { set({ noteFocusId: null }) },
+  setFocusedPane(p) { set({ focusedPane: p }) },
   setPendingSelectId(id) { set({ pendingSelectId: id }) },
 
   addTask(t) {

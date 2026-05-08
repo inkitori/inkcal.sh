@@ -46,6 +46,13 @@ export interface Settings {
   defaultView: 'todo' | 'calendar' | 'notes'
   /** last view used; restored on next launch (incl. window recreate from transparency toggle) */
   lastView?: 'todo' | 'calendar' | 'notes'
+  /** when false, the notes editor is plain CodeMirror (no vim bindings) */
+  vimEnabled: boolean
+  notesMaxWidth: 'narrow' | 'medium' | 'wide' | 'full'
+  splitEnabled: boolean
+  splitSecondary: 'todo' | 'calendar' | 'notes' | null
+  /** primary pane fraction, 0..1 */
+  splitRatio: number
 }
 
 export interface AppData {
@@ -99,7 +106,12 @@ export const DEFAULT_DATA: AppData = {
     activeTheme: 'dark',
     globalHotkey: 'Cmd+Shift+Space',
     transparency: false,
-    defaultView: 'todo'
+    defaultView: 'todo',
+    vimEnabled: false,
+    notesMaxWidth: 'wide',
+    splitEnabled: false,
+    splitSecondary: null,
+    splitRatio: 0.5
   },
   tasks: [],
   completions: []

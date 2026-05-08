@@ -18,13 +18,15 @@ interface Props {
   showTime?: boolean
   hideCheckbox?: boolean
   recurrenceLabel?: string
+  /** danger-tone label for missed recurring rows; replaces the dueLabel */
+  overdueLabel?: string
 }
 
 export default function TaskRow({
   task, isCompleted, isSelected, isOverdue, isRenaming,
   onToggle, onClick, onRenameSubmit, onRenameCancel,
   showDue = true, showTime = true,
-  hideCheckbox = false, recurrenceLabel
+  hideCheckbox = false, recurrenceLabel, overdueLabel
 }: Props) {
   const titleStyle: React.CSSProperties = {
     color: isCompleted ? 'var(--muted)' : 'var(--text)',
@@ -99,8 +101,10 @@ export default function TaskRow({
       )}
       <span className="font-mono text-[10px] flex items-center gap-2 shrink-0" style={{ color: 'var(--muted)' }}>
         {showTime && time && <span>@{timeLabel}</span>}
-        {recurrenceLabel && <span style={{ color: 'var(--muted-2)' }}>{recurrenceLabel}</span>}
-        {label && (
+        {recurrenceLabel && !overdueLabel && <span style={{ color: 'var(--muted-2)' }}>{recurrenceLabel}</span>}
+        {overdueLabel ? (
+          <span style={{ color: 'var(--danger)' }}>{overdueLabel}</span>
+        ) : label && (
           <span style={{ color: isOverdue ? 'var(--danger)' : 'var(--accent)' }}>{label}</span>
         )}
       </span>
