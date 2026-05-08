@@ -7,6 +7,9 @@ export default function Settings() {
   const close = useStore(s => s.closeSettings)
   const settings = useStore(s => s.settings)
   const setSettings = useStore(s => s.setSettings)
+  const demoMode = useStore(s => s.demoMode)
+  const enterDemoMode = useStore(s => s.enterDemoMode)
+  const exitDemoMode = useStore(s => s.exitDemoMode)
 
   useEffect(() => {
     if (!open) return
@@ -140,6 +143,14 @@ export default function Settings() {
                 { value: 'notes', label: 'notes' }
               ]}
               onChange={(v) => setSettings({ splitSecondary: v as S['splitSecondary'] })}
+            />
+          )}
+
+          {import.meta.env.DEV && (
+            <ToggleField
+              label="demo data"
+              checked={demoMode}
+              onChange={(v) => { v ? enterDemoMode() : exitDemoMode() }}
             />
           )}
         </div>

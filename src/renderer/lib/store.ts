@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { AppData, Completion, Settings, Task } from '@/../shared/types'
 import { DEFAULT_DATA } from '@/../shared/types'
 import { todayISO, isBefore } from './date'
+import { buildDemoData } from './demoData'
 
 type ViewName = 'todo' | 'calendar' | 'notes'
 
@@ -41,9 +42,13 @@ interface State {
   redoStack: UndoEntry[]
   status: StatusMessage | null
 
+  demoMode: boolean
+
   init: () => Promise<void>
   flushSoon: () => void
   saveNow: () => Promise<void>
+  enterDemoMode: () => Promise<void>
+  exitDemoMode: () => Promise<void>
 
   setView: (v: ViewName) => void
   openPalette: () => void
@@ -88,9 +93,11 @@ const UNDO_LIMIT = 100
 const STATUS_MS = 1500
 
 function persist(get: () => State) {
+  if (get().demoMode) return
   if (saveDebounce) clearTimeout(saveDebounce)
   saveDebounce = setTimeout(() => {
     const s = get()
+    if (s.demoMode) return
     const data: AppData = {
       version: 1,
       settings: s.settings,
@@ -146,6 +153,8 @@ export const useStore = create<State>((set, get) => {
     redoStack: [],
     status: null,
 
+    demoMode: false,
+
     async init() {
       const data = await window.inkcal.loadData()
       const settings = { ...DEFAULT_DATA.settings, ...data.settings }
@@ -161,6 +170,7 @@ export const useStore = create<State>((set, get) => {
       persist(get)
     },
     async saveNow() {
+      if (get().demoMode) return
       if (saveDebounce) clearTimeout(saveDebounce)
       saveDebounce = null
       const s = get()
@@ -172,6 +182,44 @@ export const useStore = create<State>((set, get) => {
       }
       await window.inkcal.saveData(data)
       await window.inkcal.flushData()
+    },
+
+    async enterDemoMode() {
+      if (get().demoMode) return
+      if (saveDebounce) clearTimeout(saveDebounce)
+      saveDebounce = null
+      const s = get()
+      const data: AppData = {
+        version: 1,
+        settings: s.settings,
+        tasks: s.tasks,
+        completions: s.completions
+      }
+      await window.inkcal.saveData(data)
+      await window.inkcal.flushData()
+      const demo = buildDemoData()
+      set({
+        demoMode: true,
+        tasks: demo.tasks,
+        completions: demo.completions,
+        undoStack: [],
+        redoStack: [],
+        pendingSelectId: null
+      })
+      setStatus('demo data loaded')
+    },
+    async exitDemoMode() {
+      if (!get().demoMode) return
+      const data = await window.inkcal.loadData()
+      set({
+        demoMode: false,
+        tasks: data.tasks ?? [],
+        completions: data.completions ?? [],
+        undoStack: [],
+        redoStack: [],
+        pendingSelectId: null
+      })
+      setStatus('demo data cleared')
     },
 
     setView(v) {

@@ -55,7 +55,7 @@ export default function Capture() {
               if (e.key === 'Enter') { e.preventDefault(); submit() }
               if (e.key === 'Escape') { e.preventDefault(); close() }
             }}
-            placeholder="capture…  e.g. tomorrow write report  /  every friday at 10 yoga  /  may 6 doctor"
+            placeholder="capture…  e.g. every mwf 2pm-3pm lecture  /  tmr 6am study  /  in 2 hours eat"
             inputClassName="w-full text-base bg-transparent outline-none"
           />
         </div>
