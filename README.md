@@ -2,6 +2,10 @@
 
 calm vim notetaking
 
+made this because i couldn't find any other productivity app (except obsidian) that felt good to use
+
+## screenshots
+
 ### todos
 
 ![todos](assets/todos.png)
@@ -25,11 +29,6 @@ fix by running (i'll fix this once i can pay for a key lol):
 ```sh
 xattr -cr /Applications/inkcal.app
 ```
-
-## Code signing error on auto-update
-
-the application got renamed to inkcal.app so just redownload from releases and delete the old inkcal.sh.app
-
 
 ## capture syntax (⌘K)
 
