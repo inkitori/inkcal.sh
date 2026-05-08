@@ -22,6 +22,7 @@ const api = {
   revealData: (): Promise<void> => ipcRenderer.invoke('app:revealData'),
   about: (): Promise<AboutInfo> => ipcRenderer.invoke('app:about'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('app:openExternal', url),
+  testNotification: (): Promise<boolean> => ipcRenderer.invoke('notifications:test'),
   updaterState: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:state'),
   checkForUpdates: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:check'),
   quitAndInstall: (): Promise<boolean> => ipcRenderer.invoke('updater:quitAndInstall'),

@@ -53,6 +53,22 @@ export default function Settings() {
             onChange={(v) => setSettings({ notePreviewInFocus: v })}
           />
 
+          <ToggleField
+            label="notifications"
+            hint="remind you for todos with a time and recurring tasks. dock icon shows overdue count."
+            checked={settings.notificationsEnabled}
+            onChange={(v) => setSettings({ notificationsEnabled: v })}
+          />
+
+          {settings.notificationsEnabled && import.meta.env.DEV && (
+            <ActionField
+              label="test notification"
+              hint="send one now to verify (and trigger the macOS permission prompt)"
+              buttonLabel="send"
+              onClick={() => window.inkcal.testNotification()}
+            />
+          )}
+
           <HotkeyField
             label="global hotkey"
             value={settings.globalHotkey}
@@ -184,6 +200,35 @@ function RadioField({ label, value, options, onChange }: {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function ActionField({ label, hint, buttonLabel, onClick }: {
+  label: string
+  hint?: string
+  buttonLabel: string
+  onClick: () => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex-1">
+        <div className="text-[13px]" style={{ color: 'var(--text)' }}>{label}</div>
+        {hint && (
+          <div className="font-mono text-[10px] mt-0.5" style={{ color: 'var(--muted-2)' }}>{hint}</div>
+        )}
+      </div>
+      <button
+        onClick={onClick}
+        className="rounded-sm px-2 py-1 font-mono text-[10px] uppercase"
+        style={{
+          background: 'transparent',
+          color: 'var(--muted)',
+          border: '1px solid var(--border)'
+        }}
+      >
+        {buttonLabel}
+      </button>
     </div>
   )
 }

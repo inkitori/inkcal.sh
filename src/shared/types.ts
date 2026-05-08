@@ -55,6 +55,8 @@ export interface Settings {
   splitRatio: number
   /** when true, NoteFocus shows a live markdown preview alongside the editor */
   notePreviewInFocus: boolean
+  /** when true, schedule native macOS notifications for tasks */
+  notificationsEnabled: boolean
 }
 
 export interface AppData {
@@ -114,7 +116,8 @@ export const DEFAULT_DATA: AppData = {
     splitEnabled: false,
     splitSecondary: null,
     splitRatio: 0.5,
-    notePreviewInFocus: false
+    notePreviewInFocus: false,
+    notificationsEnabled: false
   },
   tasks: [],
   completions: []

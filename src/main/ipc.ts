@@ -13,6 +13,7 @@ import { getTheme, getUserThemesDir, loadThemes, watchThemes } from './themes'
 import { applyWindowTheme, getWindow } from './window'
 import { registerGlobalHotkey } from './shortcuts'
 import { checkForUpdates, getUpdaterState, quitAndInstall } from './updater'
+import { rescheduleAll, sendTestNotification } from './notifications'
 import type { AppData } from '../shared/types'
 import { shell } from 'electron'
 
@@ -21,6 +22,7 @@ export function registerIpc() {
 
   ipcMain.handle('data:save', (_e, data: AppData) => {
     saveData(data)
+    rescheduleAll(data)
     return true
   })
 
@@ -81,6 +83,11 @@ export function registerIpc() {
     packaged: app.isPackaged
   }))
   ipcMain.handle('app:openExternal', (_e, url: string) => shell.openExternal(url))
+
+  ipcMain.handle('notifications:test', () => {
+    sendTestNotification()
+    return true
+  })
 
   ipcMain.handle('updater:state', () => getUpdaterState())
   ipcMain.handle('updater:check', async () => {
