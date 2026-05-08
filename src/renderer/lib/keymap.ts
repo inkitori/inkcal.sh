@@ -130,9 +130,7 @@ export function useGlobalKeymap(): void {
       const meta = e.metaKey || e.ctrlKey
       const s = useStore.getState()
 
-      // u → undo, ctrl-r → redo. Both also fire while archive is open so
-      // archive actions (restore / perma-delete) can be reverted in place.
-      // Suppressed inside text inputs and inside text-input-style modals.
+      // undo/redo also fire while archive is open so its actions can be reverted in place.
       const undoSuppressed = s.paletteOpen || s.captureOpen || s.editOpen ||
         s.searchOpen || s.settingsOpen || s.noteFocusId || isInTextInput(e.target)
       if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === 'r' && !undoSuppressed) {

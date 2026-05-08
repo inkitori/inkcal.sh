@@ -57,7 +57,9 @@ time forms accepted: `10:00`, `10:00-11:00`, `at 10`, `at 10am`, `at 10:30pm`, `
 | ⌘\       | toggle split view                   |
 | ⌃W       | swap focused pane (when split)      |
 | /        | search                              |
-| u        | undo last delete                    |
+| A        | open archive                        |
+| u        | undo                                |
+| ⌃R       | redo                                |
 | ⌘⇧Space  | toggle window from anywhere         |
 | Esc      | close any open overlay              |
 
@@ -98,7 +100,20 @@ press `/` to open a scoped fuzzy search:
 - **todo / calendar views** → search across all todos and recurring tasks
 - **notes view** → search note bodies
 
-`↑/↓` (or `⌃p/⌃n`) move, `↵` jumps to the matching item in its view, `Esc` cancels.
+`↑/↓` (or `⌃p/⌃n`) move, `↵` jumps to the matching item in its view, `Esc` cancels. archived items show a `done` or `deleted` hint and `↵` opens them in the archive modal.
+
+## archive
+
+`dd` is a soft delete. completing a one-off todo also takes it out of the active list. both end up in the archive, openable with `A` (or the palette).
+
+| key       | action                                |
+|-----------|---------------------------------------|
+| j / k     | move down / up                        |
+| x, space  | restore (uncomplete or undelete)      |
+| dd  /  ⌫  | delete forever                        |
+| e         | edit properties                       |
+| i         | rename inline                         |
+| Esc       | close                                 |
 
 ## themes
 

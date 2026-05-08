@@ -11,7 +11,6 @@ type ArchiveSection = 'completed' | 'deleted'
 interface Row {
   task: Task
   section: ArchiveSection
-  /** muted right-side label: "done yesterday", "deleted 3d ago", etc. */
   label: string
 }
 
@@ -87,8 +86,7 @@ export default function Archive() {
     else restore(row.task.id)
   }
 
-  // Inline keyboard handler — separate from useListKeymap so it can fire while
-  // archive is the topmost modal (useListKeymap is gated on archiveOpen).
+  // useListKeymap is gated on archiveOpen, so the modal handles its own keys.
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {

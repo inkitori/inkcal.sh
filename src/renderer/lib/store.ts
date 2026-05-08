@@ -7,15 +7,12 @@ type ViewName = 'todo' | 'calendar' | 'notes'
 
 interface UndoEntry {
   description: string
-  /** apply the original action — used by redo */
   redo: () => void
-  /** revert the action — used by undo */
   undo: () => void
 }
 
 interface StatusMessage {
   text: string
-  /** Date.now() when posted; component can fade based on age */
   at: number
 }
 
@@ -222,18 +219,21 @@ export const useStore = create<State>((set, get) => {
       const before = get().tasks.find(t => t.id === id)
       if (!before || before.deletedAt) return
       const deletedAt = new Date().toISOString()
+      const desc = describe(before)
       const apply = () => set(s => ({
         tasks: s.tasks.map(t => t.id === id ? { ...t, deletedAt } : t)
       }))
       const inverse = () => set(s => ({ tasks: s.tasks.map(t => t.id === id ? before : t) }))
       apply()
-      pushUndo({ description: `deleted ${describe(before)}`, redo: apply, undo: inverse })
+      pushUndo({ description: `deleted ${desc}`, redo: apply, undo: inverse })
+      setStatus(`deleted ${desc} · u to undo`)
       persist(get)
     },
     permanentlyDeleteTask(id) {
       const before = get().tasks.find(t => t.id === id)
       if (!before) return
       const beforeCompletions = get().completions.filter(c => c.taskId === id)
+      const desc = describe(before)
       const apply = () => set(s => ({
         tasks: s.tasks.filter(t => t.id !== id),
         completions: s.completions.filter(c => c.taskId !== id)
@@ -243,7 +243,8 @@ export const useStore = create<State>((set, get) => {
         completions: [...s.completions, ...beforeCompletions]
       }))
       apply()
-      pushUndo({ description: `permanently deleted ${describe(before)}`, redo: apply, undo: inverse })
+      pushUndo({ description: `permanently deleted ${desc}`, redo: apply, undo: inverse })
+      setStatus(`deleted ${desc} forever · u to undo`)
       persist(get)
     },
     restoreTask(id) {
@@ -385,9 +386,7 @@ export function selectRecurring(tasks: Task[]): Task[] {
 }
 
 interface ArchiveBuckets {
-  /** one-off todos with at least one completion record, not deleted; newest completion first */
   completed: Task[]
-  /** any task with deletedAt; newest deletion first */
   deleted: Task[]
 }
 
@@ -418,7 +417,6 @@ export function selectArchived(tasks: Task[], completions: Completion[]): Archiv
   return { completed, deleted }
 }
 
-/** "YYYY-MM-DD" for the latest completion of a task, or null. */
 export function lastCompletionDate(taskId: string, completions: Completion[]): string | null {
   let latest: string | null = null
   for (const c of completions) {

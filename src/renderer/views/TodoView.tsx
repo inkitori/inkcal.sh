@@ -58,8 +58,7 @@ export default function TodoView() {
   const recurringTasks = useMemo(() => selectRecurring(tasks), [tasks])
 
   const rows: Row[] = useMemo(() => {
-    // OVERDUE one-off todos. Completing one removes it from this list (it
-    // appears in Archive instead), so isCompleted is always false here.
+    // selectOverdueTodos already excludes completed; rows are always uncompleted.
     const overdueTodoRows: Row[] = overdue.map(t => ({
       task: t, date: today, isCompleted: false,
       section: 'overdue', isOverdue: true, showDue: true,
@@ -115,9 +114,8 @@ export default function TodoView() {
         })
     )
 
-    // One-off todos vanish on completion (they go to Archive), so all rows
-    // here are uncompleted. row.date is today so toggle records a completion
-    // for today regardless of which section the task lived in.
+    // row.date is today so toggle always records completion under today,
+    // regardless of which section the task lived in.
     const todayTodoRows: Row[] = todayTodos.map(t => ({
       task: t, date: today, isCompleted: false,
       section: 'today', showDue: false
