@@ -30,6 +30,8 @@ export interface Task {
   /** present only when kind='recurring' */
   recurrence?: Recurrence
   createdAt: string
+  /** ISO timestamp; presence = soft-deleted, hidden from active views, restorable from archive */
+  deletedAt?: string
 }
 
 export interface Completion {
@@ -43,9 +45,9 @@ export interface Settings {
   activeTheme: string
   globalHotkey: string
   transparency: boolean
-  defaultView: 'todo' | 'calendar' | 'notes'
+  defaultView: 'todo' | 'calendar' | 'notes' | 'archive'
   /** last view used; restored on next launch (incl. window recreate from transparency toggle) */
-  lastView?: 'todo' | 'calendar' | 'notes'
+  lastView?: 'todo' | 'calendar' | 'notes' | 'archive'
   /** when false, the notes editor is plain CodeMirror (no vim bindings) */
   vimEnabled: boolean
   notesMaxWidth: 'narrow' | 'medium' | 'wide' | 'full'

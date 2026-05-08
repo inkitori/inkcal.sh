@@ -52,23 +52,19 @@ export default function TodoView() {
   const today = todayISO()
 
   const overdue = useMemo(() => selectOverdueTodos(tasks, completions), [tasks, completions])
-  const todayTodos = useMemo(() => selectTodayTodos(tasks), [tasks])
-  const upcoming = useMemo(() => selectUpcomingTodos(tasks), [tasks])
-  const inbox = useMemo(() => selectInboxTodos(tasks), [tasks])
+  const todayTodos = useMemo(() => selectTodayTodos(tasks, completions), [tasks, completions])
+  const upcoming = useMemo(() => selectUpcomingTodos(tasks, completions), [tasks, completions])
+  const inbox = useMemo(() => selectInboxTodos(tasks, completions), [tasks, completions])
   const recurringTasks = useMemo(() => selectRecurring(tasks), [tasks])
 
   const rows: Row[] = useMemo(() => {
-    // OVERDUE one-off todos. Catch-ups completed today stay sunk in this
-    // section for the rest of the day so the "just did this" feedback lands
-    // where the user expects.
-    const overdueTodoRows: Row[] = overdue.map(t => {
-      const completedToday = completions.some(c => c.taskId === t.id && c.date === today)
-      return {
-        task: t, date: today, isCompleted: completedToday,
-        section: 'overdue', isOverdue: true, showDue: true,
-        overdueSortDate: t.due ?? today
-      }
-    })
+    // OVERDUE one-off todos. Completing one removes it from this list (it
+    // appears in Archive instead), so isCompleted is always false here.
+    const overdueTodoRows: Row[] = overdue.map(t => ({
+      task: t, date: today, isCompleted: false,
+      section: 'overdue', isOverdue: true, showDue: true,
+      overdueSortDate: t.due ?? today
+    }))
 
     // RECURRING: each task resolves to exactly one slot.
     const recurringRows: Row[] = []
@@ -119,9 +115,11 @@ export default function TodoView() {
         })
     )
 
+    // One-off todos vanish on completion (they go to Archive), so all rows
+    // here are uncompleted. row.date is today so toggle records a completion
+    // for today regardless of which section the task lived in.
     const todayTodoRows: Row[] = todayTodos.map(t => ({
-      task: t, date: today,
-      isCompleted: completions.some(c => c.taskId === t.id),
+      task: t, date: today, isCompleted: false,
       section: 'today', showDue: false
     }))
 
@@ -131,8 +129,7 @@ export default function TodoView() {
     ])
 
     const upcomingTodoRows: Row[] = upcoming.map(t => ({
-      task: t, date: t.due ?? today,
-      isCompleted: completions.some(c => c.taskId === t.id),
+      task: t, date: today, isCompleted: false,
       section: 'upcoming', showDue: true
     }))
 
@@ -141,11 +138,10 @@ export default function TodoView() {
       ...upcomingTodoRows
     ])
 
-    const inboxRows: Row[] = sinkCompleted(inbox.map(t => ({
-      task: t, date: today,
-      isCompleted: completions.some(c => c.taskId === t.id),
+    const inboxRows: Row[] = inbox.map(t => ({
+      task: t, date: today, isCompleted: false,
       section: 'inbox', showDue: false
-    })))
+    }))
 
     return [...overdueRows, ...todayRows, ...upcomingRows, ...inboxRows]
   }, [overdue, recurringTasks, todayTodos, upcoming, inbox, completions, today])

@@ -36,7 +36,7 @@ export default function Header() {
         </div>
 
         <nav className="no-drag flex items-center gap-1 ml-auto font-mono text-[11px] uppercase">
-          {(['todo','calendar','notes'] as const).map(v => (
+          {(['todo','calendar','notes','archive'] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}

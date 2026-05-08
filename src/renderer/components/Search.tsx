@@ -15,6 +15,7 @@ export default function Search() {
   const close = useStore(s => s.closeSearch)
   const view = useStore(s => s.view)
   const tasks = useStore(s => s.tasks)
+  const completions = useStore(s => s.completions)
   const setView = useStore(s => s.setView)
   const setPendingSelectId = useStore(s => s.setPendingSelectId)
 
@@ -33,6 +34,14 @@ export default function Search() {
   const scope: 'notes' | 'tasks' = view === 'notes' ? 'notes' : 'tasks'
 
   const items: Item[] = useMemo(() => {
+    const completedIds = new Set(completions.map(c => c.taskId))
+    function hintFor(t: Task): string {
+      if (t.deletedAt) return 'deleted'
+      if (t.kind === 'todo' && completedIds.has(t.id)) return 'done'
+      if (t.kind === 'recurring') return 'recurring'
+      if (t.kind === 'note') return 'note'
+      return t.due ?? 'inbox'
+    }
     if (scope === 'notes') {
       return tasks
         .filter(t => t.kind === 'note')
@@ -40,7 +49,7 @@ export default function Search() {
         .map(t => ({
           id: t.id,
           label: (t.body ?? '').replace(/\s+/g, ' ').trim() || '(empty)',
-          hint: 'note',
+          hint: hintFor(t),
           task: t
         }))
     }
@@ -50,10 +59,10 @@ export default function Search() {
       .map(t => ({
         id: t.id,
         label: t.title ?? '(untitled)',
-        hint: t.kind === 'recurring' ? 'recurring' : (t.due ?? 'inbox'),
+        hint: hintFor(t),
         task: t
       }))
-  }, [tasks, scope])
+  }, [tasks, completions, scope])
 
   const filtered = useMemo(() => {
     if (!q) return items.slice(0, 20)
@@ -64,7 +73,10 @@ export default function Search() {
   if (!open) return null
 
   function pick(it: Item) {
-    if (it.task.kind === 'note') setView('notes')
+    const t = it.task
+    const isCompletedTodo = t.kind === 'todo' && completions.some(c => c.taskId === t.id)
+    if (t.deletedAt || isCompletedTodo) setView('archive')
+    else if (t.kind === 'note') setView('notes')
     else setView('todo')
     setPendingSelectId(it.id)
     close()

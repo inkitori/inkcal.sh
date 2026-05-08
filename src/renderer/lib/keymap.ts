@@ -165,6 +165,7 @@ export function useGlobalKeymap(): void {
       if (meta && e.key === '1') { e.preventDefault(); s.setView('todo'); return }
       if (meta && e.key === '2') { e.preventDefault(); s.setView('calendar'); return }
       if (meta && e.key === '3') { e.preventDefault(); s.setView('notes'); return }
+      if (meta && e.key === '4') { e.preventDefault(); s.setView('archive'); return }
 
       if (!meta && !isInTextInput(e.target) && !s.paletteOpen && !s.captureOpen && !s.searchOpen) {
         if (e.key === '/') { e.preventDefault(); s.openSearch(); return }
@@ -172,9 +173,9 @@ export function useGlobalKeymap(): void {
           e.preventDefault()
           s.openCapture('note: ')
         }
-        if (e.key === 'u' && s.undoStack.length > 0) {
+        if (e.key === 'u') {
           e.preventDefault()
-          s.restoreUndo()
+          s.restoreMostRecentDeleted()
         }
       }
 

@@ -75,6 +75,7 @@ function selectOverdueCount(data: AppData): number {
   const today = todayISO()
   let count = 0
   for (const t of data.tasks) {
+    if (t.deletedAt) continue
     if (t.kind === 'todo') {
       if (!t.due || t.due >= today) continue
       if (data.completions.some(c => c.taskId === t.id)) continue
@@ -122,6 +123,7 @@ function scheduleTodos(data: AppData) {
   const now = Date.now()
   const fmt = data.settings.clockFormat
   for (const t of data.tasks) {
+    if (t.deletedAt) continue
     if (t.kind !== 'todo' || !t.due) continue
     if (isCompletedOnOrAfter(t.id, t.due, data.completions)) continue
     if (!t.time) continue
@@ -137,6 +139,7 @@ function scheduleRecurring(data: AppData) {
   const today = todayISO()
   const fmt = data.settings.clockFormat
   for (const t of data.tasks) {
+    if (t.deletedAt) continue
     if (t.kind !== 'recurring') continue
     if (!t.recurrence?.start) continue
     if (!matches(t, today)) continue

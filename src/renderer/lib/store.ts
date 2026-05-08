@@ -1,17 +1,9 @@
 import { create } from 'zustand'
-import { nanoid } from 'nanoid'
 import type { AppData, Completion, Settings, Task } from '@/../shared/types'
 import { DEFAULT_DATA } from '@/../shared/types'
 import { todayISO, isBefore } from './date'
 
-interface UndoEntry {
-  id: string
-  task: Task
-  completions: Completion[]
-  deletedAt: number
-}
-
-type ViewName = 'todo' | 'calendar' | 'notes'
+type ViewName = 'todo' | 'calendar' | 'notes' | 'archive'
 
 interface State {
   ready: boolean
@@ -32,7 +24,6 @@ interface State {
   noteFocusId: string | null
   focusedPane: 'primary' | 'secondary'
   pendingSelectId: string | null
-  undoStack: UndoEntry[]
 
   init: () => Promise<void>
   flushSoon: () => void
@@ -61,9 +52,11 @@ interface State {
   addTask: (t: Task) => void
   updateTask: (id: string, patch: Partial<Task>) => void
   deleteTask: (id: string) => void
+  permanentlyDeleteTask: (id: string) => void
+  restoreTask: (id: string) => void
+  restoreMostRecentDeleted: () => void
   toggleCompletion: (taskId: string, dateISO: string) => void
-  restoreUndo: () => void
-  clearUndo: () => void
+  uncompleteTask: (taskId: string) => void
 
   setSettings: (patch: Partial<Settings>) => Promise<void>
 }
@@ -103,7 +96,6 @@ export const useStore = create<State>((set, get) => ({
   noteFocusId: null,
   focusedPane: 'primary',
   pendingSelectId: null,
-  undoStack: [],
 
   async init() {
     const data = await window.inkcal.loadData()
@@ -167,13 +159,46 @@ export const useStore = create<State>((set, get) => ({
   deleteTask(id) {
     const s = get()
     const task = s.tasks.find(t => t.id === id)
-    if (!task) return
-    const completions = s.completions.filter(c => c.taskId === id)
-    const entry: UndoEntry = { id: nanoid(), task, completions, deletedAt: Date.now() }
+    if (!task || task.deletedAt) return
+    set({
+      tasks: s.tasks.map(t => t.id === id ? { ...t, deletedAt: new Date().toISOString() } : t)
+    })
+    persist(get)
+  },
+  permanentlyDeleteTask(id) {
+    const s = get()
     set({
       tasks: s.tasks.filter(t => t.id !== id),
-      completions: s.completions.filter(c => c.taskId !== id),
-      undoStack: [...s.undoStack, entry].slice(-100)
+      completions: s.completions.filter(c => c.taskId !== id)
+    })
+    persist(get)
+  },
+  restoreTask(id) {
+    const s = get()
+    set({
+      tasks: s.tasks.map(t => {
+        if (t.id !== id) return t
+        const { deletedAt: _drop, ...rest } = t
+        return rest
+      })
+    })
+    persist(get)
+  },
+  restoreMostRecentDeleted() {
+    const s = get()
+    let latest: Task | null = null
+    for (const t of s.tasks) {
+      if (!t.deletedAt) continue
+      if (!latest || (latest.deletedAt && t.deletedAt > latest.deletedAt)) latest = t
+    }
+    if (!latest) return
+    const id = latest.id
+    set({
+      tasks: s.tasks.map(t => {
+        if (t.id !== id) return t
+        const { deletedAt: _drop, ...rest } = t
+        return rest
+      })
     })
     persist(get)
   },
@@ -188,18 +213,11 @@ export const useStore = create<State>((set, get) => ({
     }
     persist(get)
   },
-  restoreUndo() {
+  uncompleteTask(taskId) {
     const s = get()
-    if (s.undoStack.length === 0) return
-    const entry = s.undoStack[s.undoStack.length - 1]
-    set({
-      tasks: [...s.tasks, entry.task],
-      completions: [...s.completions, ...entry.completions],
-      undoStack: s.undoStack.slice(0, -1)
-    })
+    set({ completions: s.completions.filter(c => c.taskId !== taskId) })
     persist(get)
   },
-  clearUndo() { set({ undoStack: [] }) },
 
   async setSettings(patch) {
     set(s => ({ settings: { ...s.settings, ...patch } }))
@@ -207,42 +225,95 @@ export const useStore = create<State>((set, get) => ({
   }
 }))
 
+function isCompletedOneOff(t: Task, completions: Completion[]): boolean {
+  return t.kind === 'todo' && completions.some(c => c.taskId === t.id)
+}
+
 export function selectOverdueTodos(tasks: Task[], completions: Completion[]): Task[] {
   const today = todayISO()
-  // A todo completed today still shows here (sunk by sinkCompleted) so the
-  // "just did this" feedback lands in the section the user expects.
   return tasks
+    .filter(t => !t.deletedAt)
     .filter(t => t.kind === 'todo' && t.due && isBefore(t.due, today))
-    .filter(t => !completions.some(c => c.taskId === t.id && c.date !== today))
+    .filter(t => !isCompletedOneOff(t, completions))
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))
 }
 
-export function selectTodayTodos(tasks: Task[]): Task[] {
+export function selectTodayTodos(tasks: Task[], completions: Completion[]): Task[] {
   const today = todayISO()
   return tasks
+    .filter(t => !t.deletedAt)
     .filter(t => t.kind === 'todo' && t.due === today)
+    .filter(t => !isCompletedOneOff(t, completions))
     .sort((a, b) => (a.time ?? '99:99').localeCompare(b.time ?? '99:99'))
 }
 
-export function selectUpcomingTodos(tasks: Task[]): Task[] {
+export function selectUpcomingTodos(tasks: Task[], completions: Completion[]): Task[] {
   const today = todayISO()
   return tasks
+    .filter(t => !t.deletedAt)
     .filter(t => t.kind === 'todo' && t.due && t.due > today)
+    .filter(t => !isCompletedOneOff(t, completions))
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))
 }
 
-export function selectInboxTodos(tasks: Task[]): Task[] {
+export function selectInboxTodos(tasks: Task[], completions: Completion[]): Task[] {
   return tasks
+    .filter(t => !t.deletedAt)
     .filter(t => t.kind === 'todo' && (t.due === null || t.due === undefined))
+    .filter(t => !isCompletedOneOff(t, completions))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
 export function selectNotes(tasks: Task[]): Task[] {
   return tasks
-    .filter(t => t.kind === 'note')
+    .filter(t => t.kind === 'note' && !t.deletedAt)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 export function selectRecurring(tasks: Task[]): Task[] {
-  return tasks.filter(t => t.kind === 'recurring')
+  return tasks.filter(t => t.kind === 'recurring' && !t.deletedAt)
+}
+
+interface ArchiveBuckets {
+  /** one-off todos with at least one completion record, not deleted; newest completion first */
+  completed: Task[]
+  /** any task with deletedAt; newest deletion first */
+  deleted: Task[]
+}
+
+export function selectArchived(tasks: Task[], completions: Completion[]): ArchiveBuckets {
+  const latestCompletion = new Map<string, string>()
+  for (const c of completions) {
+    const cur = latestCompletion.get(c.taskId)
+    if (!cur || c.date > cur) latestCompletion.set(c.taskId, c.date)
+  }
+
+  const completed: Task[] = []
+  const deleted: Task[] = []
+  for (const t of tasks) {
+    if (t.deletedAt) {
+      deleted.push(t)
+      continue
+    }
+    if (t.kind === 'todo' && latestCompletion.has(t.id)) {
+      completed.push(t)
+    }
+  }
+  completed.sort((a, b) => {
+    const ad = latestCompletion.get(a.id) ?? ''
+    const bd = latestCompletion.get(b.id) ?? ''
+    return bd.localeCompare(ad)
+  })
+  deleted.sort((a, b) => (b.deletedAt ?? '').localeCompare(a.deletedAt ?? ''))
+  return { completed, deleted }
+}
+
+/** "YYYY-MM-DD" for the latest completion of a task, or null. */
+export function lastCompletionDate(taskId: string, completions: Completion[]): string | null {
+  let latest: string | null = null
+  for (const c of completions) {
+    if (c.taskId !== taskId) continue
+    if (!latest || c.date > latest) latest = c.date
+  }
+  return latest
 }

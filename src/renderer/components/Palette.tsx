@@ -24,6 +24,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
   const setSettings = useStore(s => s.setSettings)
   const settings = useStore(s => s.settings)
   const tasks = useStore(s => s.tasks)
+  const completions = useStore(s => s.completions)
   const openAbout = useStore(s => s.openAbout)
   const openUpdateCheck = useStore(s => s.openUpdateCheck)
   const openSettings = useStore(s => s.openSettings)
@@ -44,6 +45,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
     out.push({ id: 'view:todo', label: 'go to todo', hint: '⌘1', type: 'view', run: () => setView('todo') })
     out.push({ id: 'view:cal', label: 'go to calendar', hint: '⌘2', type: 'view', run: () => setView('calendar') })
     out.push({ id: 'view:notes', label: 'go to notes', hint: '⌘3', type: 'view', run: () => setView('notes') })
+    out.push({ id: 'view:archive', label: 'go to archive', hint: '⌘4', type: 'view', run: () => setView('archive') })
 
     for (const t of themes) {
       out.push({
@@ -143,6 +145,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
       run: async () => {
         if (!settings.splitEnabled || !settings.splitSecondary) return
         const main = useStore.getState().view
+        if (main === 'archive') return
         const sec = settings.splitSecondary
         setView(sec)
         await setSettings({ splitSecondary: main })
@@ -206,7 +209,15 @@ export default function Palette({ themes, reloadThemes }: Props) {
       }
     })
 
+    const completedTodoIds = new Set(
+      completions.filter(c => {
+        const t = tasks.find(x => x.id === c.taskId)
+        return t?.kind === 'todo'
+      }).map(c => c.taskId)
+    )
     for (const t of tasks) {
+      if (t.deletedAt) continue
+      if (t.kind === 'todo' && completedTodoIds.has(t.id)) continue
       const label = t.title ?? t.body ?? '(untitled)'
       out.push({
         id: `task:${t.id}`,
@@ -222,7 +233,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
     }
 
     return out
-  }, [themes, tasks, settings.activeTheme, settings.transparency, settings.splitEnabled, settings.splitSecondary])
+  }, [themes, tasks, completions, settings.activeTheme, settings.transparency, settings.splitEnabled, settings.splitSecondary])
 
   const filtered = useMemo(() => {
     if (!q) return items.slice(0, 10)
