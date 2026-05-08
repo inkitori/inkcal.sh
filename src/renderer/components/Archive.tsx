@@ -196,6 +196,7 @@ export default function Archive() {
           isRenaming={row.task.id === renamingId}
           showDue={false}
           showTime={false}
+          hideCheckbox={row.section === 'deleted'}
           recurrenceLabel={row.label}
           onToggle={() => actToggle(row)}
           onDelete={() => {

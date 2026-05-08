@@ -58,7 +58,8 @@ export default function VimEditor({
       '&': {
         background: 'transparent',
         color: 'var(--text)',
-        fontSize: '14px'
+        fontSize: '14px',
+        height: '100%'
       },
       '.cm-content': {
         // 2px left padding so the column-0 cursor (which has margin-left:-0.6px)
@@ -78,12 +79,43 @@ export default function VimEditor({
         background: 'transparent',
         outline: '1px solid var(--text)'
       },
-      '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
+      '.cm-selectionBackground, ::selection': {
+        background: 'var(--accent-soft)'
+      },
+      '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
         background: 'var(--accent-soft)'
       },
       '&.cm-focused': { outline: 'none' },
-      '&.cm-editor': { outline: 'none' }
-    })
+      '&.cm-editor': { outline: 'none' },
+      '.cm-panels, .cm-panels-bottom, .cm-panels-top': {
+        background: 'transparent',
+        border: 'none',
+        boxShadow: 'none',
+        fontFamily: "'Geist Mono', ui-monospace, monospace"
+      },
+      '.cm-vim-panel': {
+        padding: '10px 2px 4px',
+        color: 'var(--text)',
+        background: 'transparent',
+        fontSize: '13px',
+        display: 'flex',
+        alignItems: 'center'
+      },
+      '.cm-vim-panel input': {
+        color: 'var(--text)',
+        fontFamily: 'inherit',
+        fontSize: 'inherit',
+        background: 'transparent',
+        border: 'none',
+        outline: 'none',
+        caretColor: 'var(--text)',
+        flex: '1'
+      },
+      '.cm-vim-panel span + span': { display: 'none' },
+      '.cm-vim-message': { color: 'var(--muted-2)', fontSize: '11px' },
+      '.cm-searchMatch': { backgroundColor: 'var(--accent-soft)', color: 'var(--text)' },
+      '.cm-searchMatch.cm-searchMatch-selected': { backgroundColor: 'var(--accent-soft)', outline: '1px solid var(--accent)' }
+    }, { dark: true })
 
     const extensions = [
       ...(vimEnabled ? [vim()] : []),
@@ -178,6 +210,10 @@ export default function VimEditor({
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        // Vim's search panel handles its own Esc (closes the panel and refocuses
+        // the editor); intercepting here would commit and tear the editor down.
+        const t = e.target as HTMLElement | null
+        if (t && t.closest('.cm-vim-panel')) return
         if (!vimEnabled || modeRef.current === 'normal') {
           e.preventDefault()
           e.stopPropagation()
@@ -209,7 +245,7 @@ export default function VimEditor({
     return () => el.removeEventListener('keydown', onKeyDown, true)
   }, [vimEnabled])
 
-  return <div ref={hostRef} className="w-full" />
+  return <div ref={hostRef} className="w-full h-full" />
 }
 
 // Mirror vim's unnamed register (`"`) through the OS clipboard so that y/d/c

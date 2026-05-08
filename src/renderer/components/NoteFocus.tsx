@@ -23,26 +23,27 @@ export default function NoteFocus() {
 
   const showPreview = settings.notePreviewInFocus
 
-  // Mirror the editor pane's scroll ratio onto the preview pane. Proportional
+  // Mirror the editor scroller's ratio onto the preview pane. Proportional
   // sync is good enough for short-to-medium notes and sidesteps source-line ↔
-  // rendered-DOM mapping. As the editor scrolls (mouse wheel, vim navigation
-  // that drags the viewport), the preview tracks along.
+  // rendered-DOM mapping.
   useLayoutEffect(() => {
     if (!showPreview || !noteId) return
-    const editor = editorPaneRef.current
+    const pane = editorPaneRef.current
     const preview = previewRef.current
-    if (!editor || !preview) return
+    if (!pane || !preview) return
+    const scroller = pane.querySelector<HTMLElement>('.cm-scroller')
+    if (!scroller) return
     function onScroll() {
-      if (!editor || !preview) return
-      const editorMax = editor.scrollHeight - editor.clientHeight
+      if (!scroller || !preview) return
+      const editorMax = scroller.scrollHeight - scroller.clientHeight
       if (editorMax <= 0) return
-      const ratio = editor.scrollTop / editorMax
+      const ratio = scroller.scrollTop / editorMax
       const previewMax = preview.scrollHeight - preview.clientHeight
       if (previewMax <= 0) return
       preview.scrollTop = ratio * previewMax
     }
-    editor.addEventListener('scroll', onScroll, { passive: true })
-    return () => editor.removeEventListener('scroll', onScroll)
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
   }, [showPreview, noteId, draft])
 
   useEffect(() => {
