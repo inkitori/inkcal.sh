@@ -97,9 +97,6 @@ export default function TaskRow({
         />
       ) : (
         <span className="flex-1 truncate" style={titleStyle}>
-          {task.kind === 'recurring' && (
-            <span style={{ color: 'var(--muted-2)', marginRight: 4 }}>↻</span>
-          )}
           {task.title || task.body || '(untitled)'}
         </span>
       )}
@@ -107,6 +104,9 @@ export default function TaskRow({
         className={`font-mono text-[10px] flex items-center gap-2 shrink-0 transition-all duration-150 ${onDelete && !isRenaming ? 'group-hover:mr-8' : ''}`}
         style={{ color: 'var(--muted)' }}
       >
+        {task.kind === 'recurring' && (
+          <span style={{ color: 'var(--accent)', fontSize: 13, lineHeight: 1 }} title="recurring">↻</span>
+        )}
         {showTime && time && <span>@{timeLabel}</span>}
         {recurrenceLabel && !overdueLabel && <span style={{ color: 'var(--muted-2)' }}>{recurrenceLabel}</span>}
         {overdueLabel ? (
