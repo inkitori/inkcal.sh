@@ -53,7 +53,7 @@ export default function TodoView() {
 
   const today = todayISO()
 
-  const overdue = useMemo(() => selectOverdueTodos({ tasks, completions } as any), [tasks, completions])
+  const overdue = useMemo(() => selectOverdueTodos(tasks, completions), [tasks, completions])
   const overdueRecurring = useMemo(
     () => selectOverdueRecurring(tasks, completions, today),
     [tasks, completions, today]
@@ -66,13 +66,13 @@ export default function TodoView() {
     () => selectCatchUpRecurring(tasks, completions, today),
     [tasks, completions, today]
   )
-  const todayTodos = useMemo(() => selectTodayTodos({ tasks, completions } as any), [tasks, completions])
-  const upcoming = useMemo(() => selectUpcomingTodos({ tasks, completions } as any), [tasks, completions])
-  const inbox = useMemo(() => selectInboxTodos({ tasks, completions } as any), [tasks, completions])
+  const todayTodos = useMemo(() => selectTodayTodos(tasks), [tasks])
+  const upcoming = useMemo(() => selectUpcomingTodos(tasks), [tasks])
+  const inbox = useMemo(() => selectInboxTodos(tasks), [tasks])
   const todayRecurring = useMemo(() => instancesForDate(tasks, completions, today), [tasks, completions, today])
   const recurringOffSchedule = useMemo(() => {
     const wd = weekdayOf(today)
-    return selectRecurring({ tasks, completions } as any).filter(t => {
+    return selectRecurring(tasks).filter(t => {
       const r = t.recurrence
       if (!r) return false
       if (r.days?.length) {

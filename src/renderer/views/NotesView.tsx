@@ -17,7 +17,7 @@ const WIDTH_BY_SETTING: Record<'narrow' | 'medium' | 'wide' | 'full', string> = 
 
 export default function NotesView() {
   const tasks = useStore(s => s.tasks)
-  const notes = selectNotes({ tasks, completions: useStore.getState().completions } as any)
+  const notes = selectNotes(tasks)
   const deleteTask = useStore(s => s.deleteTask)
   const openCapture = useStore(s => s.openCapture)
   const updateTask = useStore(s => s.updateTask)
@@ -54,7 +54,7 @@ export default function NotesView() {
     onRename: () => {
       const n = notes[selected]
       if (!n) return
-      setStartMode(settings.vimEnabled ? 'insert' : 'insert')
+      setStartMode('insert')
       setVimMode('insert')
       setEditingId(n.id)
     },

@@ -10,7 +10,7 @@ import {
   todayISO,
   weekDates
 } from '@/lib/date'
-import type { Task } from '@/../shared/types'
+import type { Completion, Task } from '@/../shared/types'
 
 const HOUR_PX_WEEK = 36
 const HOUR_PX_DAY = 52
@@ -42,7 +42,7 @@ interface UntimedItem {
   date: string
 }
 
-function blocksForDate(tasks: Task[], completions: any[], date: string): BlockData[] {
+function blocksForDate(tasks: Task[], completions: Completion[], date: string): BlockData[] {
   const insts = instancesForDate(tasks, completions, date)
   const out: BlockData[] = []
   for (const inst of insts) {
@@ -57,24 +57,23 @@ function blocksForDate(tasks: Task[], completions: any[], date: string): BlockDa
       date
     })
   }
-  // also one-off todos with a time
   for (const t of tasks) {
     if (t.kind !== 'todo' || t.due !== date || !t.time) continue
     const s = t.time
     const e = t.endTime ?? add30(s)
-    const isCompleted = completions.some((c: any) => c.taskId === t.id)
+    const isCompleted = completions.some(c => c.taskId === t.id)
     out.push({ task: t, startMin: minutes(s), endMin: minutes(e), isCompleted, date })
   }
   return out
 }
 
-function untimedForDate(tasks: Task[], completions: any[], date: string): UntimedItem[] {
+function untimedForDate(tasks: Task[], completions: Completion[], date: string): UntimedItem[] {
   const out: UntimedItem[] = []
   for (const t of tasks) {
     if (t.kind !== 'todo') continue
     if (t.due !== date) continue
     if (t.time) continue
-    const isCompleted = completions.some((c: any) => c.taskId === t.id)
+    const isCompleted = completions.some(c => c.taskId === t.id)
     out.push({ task: t, isCompleted, date })
   }
   return out

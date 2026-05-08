@@ -14,15 +14,13 @@ interface ListKeyHandlers {
   onLeft?: () => void
   onRight?: () => void
   onEscape?: () => void
-  // Viewport-aligning analogues of vim's zz / zt / zb. They reposition the
-  // selected row inside the scroll container without changing selection.
+  /** zz / zt / zb — reposition the selected row in the scroll viewport. */
   onCenterView?: () => void
   onTopView?: () => void
   onBottomView?: () => void
-  // Half-page jumps: Ctrl-d / Ctrl-u. Caller decides the row count.
   onHalfPageDown?: () => void
   onHalfPageUp?: () => void
-  /** `f` key — focus / fullscreen the selected item. */
+  /** `f` — focus / fullscreen the selected item. */
   onFocusKey?: () => void
 }
 
@@ -63,8 +61,8 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
 
       const k = e.key
 
-      // Ctrl-d / Ctrl-u half-page jumps. Allowed even though they use ctrl,
-      // since they're a vim convention the rest of the keymap shouldn't gate.
+      // ctrl-d / ctrl-u: half-page jumps. Allowed despite ctrl since they're
+      // a vim convention — the rest of the keymap stays meta-free.
       if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         if (k === 'd') { e.preventDefault(); handlers.onHalfPageDown?.(); return }
         if (k === 'u') { e.preventDefault(); handlers.onHalfPageUp?.(); return }
@@ -72,7 +70,6 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
 
       if (e.metaKey || e.ctrlKey) return
 
-      // z-prefix: zz centers, zt aligns top, zb aligns bottom.
       if (pendingZ && Date.now() - pendingZ < 400) {
         pendingZ = 0
         if (k === 'z') { e.preventDefault(); handlers.onCenterView?.(); return }
@@ -170,17 +167,11 @@ export function useGlobalKeymap(): void {
       if (meta && e.key === '2') { e.preventDefault(); s.setView('calendar'); return }
       if (meta && e.key === '3') { e.preventDefault(); s.setView('notes'); return }
 
-      // unprefixed `/` opens search, `n` opens capture pre-filled with note:
       if (!meta && !isInTextInput(e.target) && !s.paletteOpen && !s.captureOpen && !s.searchOpen) {
         if (e.key === '/') { e.preventDefault(); s.openSearch(); return }
-        if (e.key === 'n') {
-          // 'n' inside notes view = new note; we handle that view-locally too.
-          // Letting it propagate is fine; this branch handles global "from anywhere → new note":
-          // we only do that if user is in notes view, otherwise let view handle.
-          if (s.view === 'notes') {
-            e.preventDefault()
-            s.openCapture('note: ')
-          }
+        if (e.key === 'n' && s.view === 'notes') {
+          e.preventDefault()
+          s.openCapture('note: ')
         }
         if (e.key === 'u' && s.undoStack.length > 0) {
           e.preventDefault()

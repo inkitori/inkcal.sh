@@ -50,11 +50,6 @@ export function isToday(iso: string): boolean {
   return iso === todayISO()
 }
 
-export function fmtTimeOfDay(hhmm: string | undefined): string {
-  if (!hhmm) return ''
-  return hhmm
-}
-
 export function diffDays(aISO: string, bISO: string): number {
   const a = fromISODate(aISO).getTime()
   const b = fromISODate(bISO).getTime()
@@ -73,11 +68,6 @@ export function dueLabel(due: string | null | undefined): string | null {
   return due
 }
 
-/**
- * Label for an overdue recurring task. `lastCompleted` is the most recent
- * completion date (any date) for the task — when present, the label leans
- * "last done Nd ago"; otherwise "missed …".
- */
 export function overdueLabel(missedISO: string, todayISO: string, lastCompleted: string | null): string {
   const daysSinceMissed = diffDays(todayISO, missedISO)
   if (daysSinceMissed === 1) return 'missed yesterday'
@@ -86,8 +76,8 @@ export function overdueLabel(missedISO: string, todayISO: string, lastCompleted:
     if (daysSinceDone >= 1) return `last done ${daysSinceDone}d ago`
   }
   const missedWd = weekdayOf(missedISO)
-  // "missed thu" on a Thursday is ambiguous (could be today). Prefix "last"
-  // when the missed weekday equals today's, or when the gap is a full week+.
+  // "missed thu" on a Thursday reads as today — prefix "last" when the missed
+  // weekday matches today's, or when the gap is a full week+.
   if (daysSinceMissed >= 7 || missedWd === weekdayOf(todayISO)) {
     return `missed last ${missedWd}`
   }

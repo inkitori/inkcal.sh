@@ -81,10 +81,8 @@ export default function Palette({ themes, reloadThemes }: Props) {
       run: async () => {
         const r = await window.inkcal.importData()
         if (r.ok && r.data) {
-          // reload state from imported data
           const s = useStore.getState()
           await s.setSettings(r.data.settings)
-          // shallow replace via direct set
           useStore.setState({
             tasks: r.data.tasks,
             completions: r.data.completions,
@@ -153,7 +151,7 @@ export default function Palette({ themes, reloadThemes }: Props) {
     out.push({
       id: 'cmd:swapPaneFocus',
       label: 'swap pane focus',
-      hint: '⌘;',
+      hint: '⌃W',
       type: 'command',
       run: () => {
         if (!settings.splitEnabled || !settings.splitSecondary) return

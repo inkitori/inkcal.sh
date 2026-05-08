@@ -53,6 +53,9 @@ time forms accepted: `10:00`, `10:00-11:00`, `at 10`, `at 10am`, `at 10:30pm`, `
 | ⌘1 / ⌘2 / ⌘3 | todo / calendar / notes         |
 | ⌘K       | capture                             |
 | ⌘P       | command palette                     |
+| ⌘,       | settings                            |
+| ⌘\       | toggle split view                   |
+| ⌃W       | swap focused pane (when split)      |
 | /        | search                              |
 | u        | undo last delete                    |
 | ⌘⇧Space  | toggle window from anywhere         |
@@ -60,16 +63,23 @@ time forms accepted: `10:00`, `10:00-11:00`, `at 10`, `at 10am`, `at 10:30pm`, `
 
 **todo & notes lists**
 
-| key       | action                       |
-|-----------|------------------------------|
-| j / k     | move down / up               |
-| gg / G    | top / bottom                 |
-| space, x  | toggle done                  |
-| dd  /  ⌫  | delete                       |
-| o         | new todo for today           |
-| n         | new note (notes view)        |
-| i         | rename selected (inline)     |
-| e         | edit properties (todo view)  |
+| key       | action                                |
+|-----------|---------------------------------------|
+| j / k     | move down / up                        |
+| gg / G    | top / bottom                          |
+| ⌃d / ⌃u   | half-page down / up                   |
+| zz / zt / zb | center / top / bottom of viewport  |
+| space, x  | toggle done                           |
+| dd  /  ⌫  | delete                                |
+| o         | new todo for today                    |
+| n         | new note (notes view)                 |
+| i         | rename selected (inline)              |
+| e         | edit properties (todo view)           |
+| f         | open note in focus mode (notes view)  |
+
+**note focus mode (`f` on a note)**
+
+opens the note in a centered editor with optional live markdown preview (toggle in settings). vim bindings apply if vim mode is on. `esc` (or `f` when not in the editor) saves and closes.
 
 **calendar**
 
@@ -132,8 +142,6 @@ a single human-readable file:
 
 electron-vite · react · tailwind · zustand · chrono-node · fuse.js · single json.
 
-# other random development stuff claude wrote
-
 ## run
 
 ```sh
@@ -142,11 +150,7 @@ npm run dev      # dev with HMR
 npm run dist     # build a packaged .dmg locally
 ```
 
-## install / release
-
-once you've cut a build, drag `release/mac-arm64/inkcal.app` into `/Applications` and launch it from spotlight/raycast/finder. data lives in `~/Library/Application Support/inkcal-sh/data.json` and persists across dev runs and packaged builds.
-
-to cut a new version + auto-publish to GitHub releases:
+## release
 
 ```sh
 npm run release             # patch bump (0.1.0 -> 0.1.1)
@@ -155,8 +159,8 @@ npm run release 1.2.3       # explicit version
 npm run release -- --local  # build + install locally, no git/publish
 ```
 
-requires `gh` to be authenticated (`gh auth login`). the script bumps `package.json`, builds, uploads the dmg+zip+`latest-mac.yml` to a GitHub release, copies the new `.app` into `/Applications`, then commits and pushes the tag.
+needs `gh` logged in. bumps the version, builds, uploads dmg/zip/`latest-mac.yml` to a github release, drops the new `.app` into `/Applications`, commits, pushes the tag.
 
-installed copies check `inkitori/inkcal.sh` releases on launch and every 6h via [`electron-updater`](https://www.electron.build/auto-update). updates download silently in the background and apply on next quit. open the about panel (⌘P → `about inkcal.sh`) to see current version, dev info, repo link, and update status. ⌘P → `check for updates` forces a check.
+installed copies poll `inkitori/inkcal.sh` on launch and every 6h via [electron-updater](https://www.electron.build/auto-update). downloads happen in the background and apply on next quit. ⌘P → `about` shows version + update status, ⌘P → `check for updates` forces it.
 
-note: builds are unsigned (ad-hoc signed only). first launch macOS will say "unidentified developer" — right-click → open → open. unsigned + auto-updating works for personal use; for distribution to others, get an apple developer cert and add `signtool`/notarization to the release script.
+builds are unsigned (ad-hoc only) so first launch macOS yells "unidentified developer" — right-click → open → open.

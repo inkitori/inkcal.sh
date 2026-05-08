@@ -212,46 +212,42 @@ export const useStore = create<State>((set, get) => ({
   }
 }))
 
-/* ── selectors ──────────────────────────────────────────────── */
-
-export function selectOverdueTodos(s: State): Task[] {
+export function selectOverdueTodos(tasks: Task[], completions: Completion[]): Task[] {
   const today = todayISO()
-  // A todo is overdue if its due date is before today and it has no completion
-  // for any *non-today* date. A todo completed *today* still appears here (sunk
-  // to bottom by sinkCompleted) for the rest of the day, so the user sees the
-  // "I just did this" feedback in the section they expect.
-  return s.tasks
+  // A todo completed today still shows here (sunk by sinkCompleted) so the
+  // "just did this" feedback lands in the section the user expects.
+  return tasks
     .filter(t => t.kind === 'todo' && t.due && isBefore(t.due, today))
-    .filter(t => !s.completions.some(c => c.taskId === t.id && c.date !== today))
+    .filter(t => !completions.some(c => c.taskId === t.id && c.date !== today))
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))
 }
 
-export function selectTodayTodos(s: State): Task[] {
+export function selectTodayTodos(tasks: Task[]): Task[] {
   const today = todayISO()
-  return s.tasks
+  return tasks
     .filter(t => t.kind === 'todo' && t.due === today)
     .sort((a, b) => (a.time ?? '99:99').localeCompare(b.time ?? '99:99'))
 }
 
-export function selectUpcomingTodos(s: State): Task[] {
+export function selectUpcomingTodos(tasks: Task[]): Task[] {
   const today = todayISO()
-  return s.tasks
+  return tasks
     .filter(t => t.kind === 'todo' && t.due && t.due > today)
     .sort((a, b) => (a.due ?? '').localeCompare(b.due ?? ''))
 }
 
-export function selectInboxTodos(s: State): Task[] {
-  return s.tasks
+export function selectInboxTodos(tasks: Task[]): Task[] {
+  return tasks
     .filter(t => t.kind === 'todo' && (t.due === null || t.due === undefined))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
-export function selectNotes(s: State): Task[] {
-  return s.tasks
+export function selectNotes(tasks: Task[]): Task[] {
+  return tasks
     .filter(t => t.kind === 'note')
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
-export function selectRecurring(s: State): Task[] {
-  return s.tasks.filter(t => t.kind === 'recurring')
+export function selectRecurring(tasks: Task[]): Task[] {
+  return tasks.filter(t => t.kind === 'recurring')
 }
