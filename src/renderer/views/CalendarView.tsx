@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
-import { instancesForDate } from '@/lib/recurrence'
+import { instancesForDate } from '@/../shared/recurrence'
 import { isInTextInput } from '@/lib/keymap'
 import { usePaneActive } from '@/lib/PaneContext'
 import {

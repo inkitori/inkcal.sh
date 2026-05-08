@@ -1,4 +1,4 @@
-import type { Completion, Task } from '@/../shared/types'
+import type { Completion, Task } from './types'
 import { addDays, weekdayOf } from './date'
 
 export interface Instance {

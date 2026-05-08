@@ -7,7 +7,7 @@ import {
   selectTodayTodos,
   selectUpcomingTodos
 } from '@/lib/store'
-import { nextRecurringSlot } from '@/lib/recurrence'
+import { nextRecurringSlot } from '@/../shared/recurrence'
 import { dueLabel, overdueLabel as fmtOverdueLabel, todayISO } from '@/lib/date'
 import { recurrenceShort } from '@/lib/parser'
 import Section from '@/components/Section'

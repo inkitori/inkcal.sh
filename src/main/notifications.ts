@@ -1,9 +1,9 @@
 import { app, Notification } from 'electron'
-import type { AppData, Completion, Recurrence, Task, Weekday } from '../shared/types'
+import type { AppData, Completion, Task } from '../shared/types'
 import { formatTimeRange } from '../shared/time'
+import { todayISO } from '../shared/date'
+import { matches, nextRecurringSlot } from '../shared/recurrence'
 import { getWindow } from './window'
-
-const WEEKDAY_BY_INDEX: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 const timers = new Map<string, NodeJS.Timeout>()
 let lastData: AppData | null = null
@@ -30,13 +30,6 @@ function scheduleAt(key: string, fireAt: number, run: () => void) {
     try { run() } catch {}
   }, capped)
   timers.set(key, handle)
-}
-
-function todayLocalISO(now = new Date()): string {
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
 }
 
 function parseHM(hm: string | undefined): { h: number; m: number } | null {
@@ -72,34 +65,14 @@ function isCompletedOnDate(taskId: string, dateISO: string, completions: Complet
   return completions.some(c => c.taskId === taskId && c.date === dateISO)
 }
 
-function addDaysISO(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(y, m - 1, d)
-  dt.setDate(dt.getDate() + n)
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-}
-
-function weekdayOfISO(iso: string): Weekday {
-  const [y, m, d] = iso.split('-').map(Number)
-  return WEEKDAY_BY_INDEX[new Date(y, m - 1, d).getDay()]
-}
-
-function recurringMatches(t: Task, iso: string): boolean {
-  const r = t.recurrence
-  if (!r) return false
-  if (r.days?.length) return r.days.includes(weekdayOfISO(iso))
-  if (r.daily) return true
-  return false
-}
-
 /**
  * Count items still requiring action: unchecked overdue one-off todos plus
- * recurring tasks with a recent missed scheduled day. Mirrors the renderer's
- * `nextRecurringSlot`: any completion (even off-schedule) acts as a checkpoint
- * that retires older expected days, and the lookback respects task creation.
+ * recurring tasks whose `nextRecurringSlot` resolves to active overdue. Catch-up
+ * completions ('overdue-completed') and today's obligations ('today') don't
+ * count — they're not blocking anymore.
  */
 function selectOverdueCount(data: AppData): number {
-  const today = todayLocalISO()
+  const today = todayISO()
   let count = 0
   for (const t of data.tasks) {
     if (t.kind === 'todo') {
@@ -107,22 +80,8 @@ function selectOverdueCount(data: AppData): number {
       if (data.completions.some(c => c.taskId === t.id)) continue
       count++
     } else if (t.kind === 'recurring') {
-      // Today's obligation masks older misses — those land in Today, not Overdue.
-      if (recurringMatches(t, today)) continue
-      const taskComps = data.completions.filter(c => c.taskId === t.id)
-      // A catch-up tap stamps today; treat that as resolving the overdue.
-      if (taskComps.some(c => c.date === today)) continue
-      const sorted = taskComps.map(c => c.date).sort()
-      const lastCompleted = sorted[sorted.length - 1] ?? null
-      const createdDate = t.createdAt.slice(0, 10)
-      for (let i = 1; i <= 7; i++) {
-        const d = addDaysISO(today, -i)
-        if (d < createdDate) break
-        if (lastCompleted && d <= lastCompleted) break
-        if (!recurringMatches(t, d)) continue
-        count++
-        break
-      }
+      const slot = nextRecurringSlot(t, data.completions, today)
+      if (slot?.state === 'overdue') count++
     }
   }
   return count
@@ -175,19 +134,16 @@ function scheduleTodos(data: AppData) {
 
 function scheduleRecurring(data: AppData) {
   const now = Date.now()
-  const today = todayLocalISO()
-  const todayWd = WEEKDAY_BY_INDEX[new Date().getDay()]
+  const today = todayISO()
   const fmt = data.settings.clockFormat
   for (const t of data.tasks) {
     if (t.kind !== 'recurring') continue
-    const r: Recurrence | undefined = t.recurrence
-    if (!r || !r.start) continue
-    const occursToday = r.days?.length ? r.days.includes(todayWd) : !!r.daily
-    if (!occursToday) continue
+    if (!t.recurrence?.start) continue
+    if (!matches(t, today)) continue
     if (isCompletedOnDate(t.id, today, data.completions)) continue
-    const fireAt = dateAtLocal(today, r.start)
+    const fireAt = dateAtLocal(today, t.recurrence.start)
     if (fireAt == null || fireAt <= now) continue
-    const body = formatTimeRange(r.start, r.end, fmt)
+    const body = formatTimeRange(t.recurrence.start, t.recurrence.end, fmt)
     scheduleAt(`recur:${t.id}:${today}`, fireAt, () => showTaskNotification(t, body))
   }
 }
