@@ -1,6 +1,6 @@
 {
   "name": "inkcal-sh",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "minimalist todo + calendar",
   "main": "out/main/index.js",
   "author": "enyouki",
@@ -58,7 +58,7 @@
   },
   "build": {
     "appId": "sh.inkcal.app",
-    "productName": "inkcal",
+    "productName": "inkcal.sh",
     "directories": {
       "output": "release"
     },
@@ -77,7 +77,11 @@
         "dmg",
         "zip"
       ],
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "CFBundleName": "inkcal",
+        "CFBundleDisplayName": "inkcal"
+      }
     },
     "publish": {
       "provider": "github",

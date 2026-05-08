@@ -7,7 +7,7 @@ vim driven ez todo list
 fix by running (i'll fix this once i can pay for a key lol):
 
 ```sh
-xattr -cr /Applications/inkcal.app
+xattr -cr /Applications/inkcal.sh.app
 ```
 
 
@@ -140,7 +140,7 @@ npm run dist     # build a packaged .dmg locally
 
 ## install / release
 
-once you've cut a build, drag `release/mac-arm64/inkcal.app` into `/Applications` and launch it from spotlight/raycast/finder. data lives in `~/Library/Application Support/inkcal-sh/data.json` and persists across dev runs and packaged builds.
+once you've cut a build, drag `release/mac-arm64/inkcal.sh.app` into `/Applications` and launch it from spotlight/raycast/finder. data lives in `~/Library/Application Support/inkcal-sh/data.json` and persists across dev runs and packaged builds.
 
 to cut a new version + auto-publish to GitHub releases:
 
