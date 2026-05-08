@@ -82,6 +82,13 @@ export default function TodoView() {
           overdueLabel: fmtOverdueLabel(slot.date, today, slot.lastCompleted),
           overdueSortDate: slot.date
         })
+      } else if (slot.state === 'overdue-completed') {
+        recurringRows.push({
+          task: t, date: today, isCompleted: true,
+          section: 'overdue', isOverdue: true, showDue: false,
+          overdueLabel: fmtOverdueLabel(slot.date, today, slot.lastCompleted),
+          overdueSortDate: slot.date
+        })
       } else if (slot.state === 'today') {
         recurringRows.push({
           task: t, date: today, isCompleted: false,

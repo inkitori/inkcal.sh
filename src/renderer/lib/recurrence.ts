@@ -12,8 +12,11 @@ export interface Instance {
  * recurring task resolves to exactly one slot (or null if its rule never
  * matches in the lookahead window):
  *
- * - 'completed-today' when ANY completion exists for today, regardless of
- *   whether today is a scheduled day. Renders sunk in Today.
+ * - 'completed-today' when today is scheduled and done, or there's a
+ *   completion today with no recent missed day. Renders sunk in Today.
+ * - 'overdue-completed' when a completion exists today AND today isn't
+ *   scheduled AND there's a recent missed scheduled day — the catch-up
+ *   case. Renders sunk in Overdue.
  * - 'overdue' when the most recent scheduled day in the lookback window
  *   was missed and there's no completion today.
  * - 'today' when today is scheduled and not completed.
@@ -24,6 +27,7 @@ export interface Instance {
  */
 export type RecurringSlot =
   | { state: 'completed-today'; date: string }
+  | { state: 'overdue-completed'; date: string; lastCompleted: string | null }
   | { state: 'overdue'; date: string; lastCompleted: string | null }
   | { state: 'today'; date: string }
   | { state: 'upcoming'; date: string }
@@ -72,13 +76,23 @@ export function nextRecurringSlot(
   if (task.kind !== 'recurring' || !task.recurrence) return null
 
   const taskComps = completions.filter(c => c.taskId === task.id)
-  if (taskComps.some(c => c.date === todayISO)) {
+  const completedToday = taskComps.some(c => c.date === todayISO)
+  const todayMatches = matches(task, todayISO)
+
+  // Today is scheduled and done — sink in Today.
+  if (completedToday && todayMatches) {
     return { state: 'completed-today', date: todayISO }
   }
 
   const completedSet = new Set(taskComps.map(c => c.date))
-  const sortedDates = taskComps.map(c => c.date).sort()
-  const lastCompleted = sortedDates[sortedDates.length - 1] ?? null
+  // When today's completion is a catch-up (today isn't scheduled), exclude it
+  // from the checkpoint so the lookback can still surface the missed day it
+  // satisfied. Otherwise it would block its own lookup.
+  const checkpointDates = (completedToday && !todayMatches
+    ? taskComps.filter(c => c.date !== todayISO)
+    : taskComps
+  ).map(c => c.date).sort()
+  const lastCompleted = checkpointDates[checkpointDates.length - 1] ?? null
   const createdDate = task.createdAt.slice(0, 10)
 
   // Walk back from today to find the most recent missed scheduled day.
@@ -91,10 +105,14 @@ export function nextRecurringSlot(
     if (!matches(task, d)) continue
     if (completedSet.has(d)) continue
     if (d === todayISO) return { state: 'today', date: d }
+    if (completedToday) return { state: 'overdue-completed', date: d, lastCompleted }
     return { state: 'overdue', date: d, lastCompleted }
   }
 
-  // No missed day in window — find the next future occurrence.
+  // No missed day in window — an off-schedule completion sinks in Today.
+  if (completedToday) return { state: 'completed-today', date: todayISO }
+
+  // Find the next future occurrence.
   for (let i = 1; i <= LOOKAHEAD_DAYS; i++) {
     const d = addDays(todayISO, i)
     if (matches(task, d)) return { state: 'upcoming', date: d }
