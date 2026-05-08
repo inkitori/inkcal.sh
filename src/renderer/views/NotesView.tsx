@@ -131,27 +131,12 @@ export default function NotesView() {
                 if (!isEditing) startEdit(n.id)
               }}
               data-selected={isSelected ? 'true' : undefined}
-              className="group px-3 py-2 rounded-md relative"
+              className="px-3 py-2 rounded-md relative"
               style={{
                 background: isSelected ? 'var(--bg-2)' : 'transparent',
                 outline: isSelected ? '1px solid var(--border)' : 'none'
               }}
             >
-              {!isEditing && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); deleteTask(n.id) }}
-                  className="absolute top-1 right-1 px-2 py-1 font-mono text-[11px] leading-none rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{
-                    background: 'rgba(220,80,80,0.12)',
-                    color: 'var(--danger)',
-                    border: '1px solid var(--danger)',
-                    zIndex: 10
-                  }}
-                  title="delete note"
-                >
-                  ×
-                </button>
-              )}
               {isEditing ? (
                 <>
                   {settings.vimEnabled && <ModeBadge mode={vimMode} />}

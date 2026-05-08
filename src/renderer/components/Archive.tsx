@@ -211,10 +211,6 @@ export default function Archive() {
           hideCheckbox={row.section === 'deleted'}
           recurrenceLabel={row.label}
           onToggle={() => actToggle(row)}
-          onDelete={() => {
-            permanentlyDelete(row.task.id)
-            setSelected(i => Math.min(i, Math.max(0, rows.length - 2)))
-          }}
           onClick={() => setSelected(idx)}
           onRenameSubmit={(text) => {
             updateTask(row.task.id, { title: text })

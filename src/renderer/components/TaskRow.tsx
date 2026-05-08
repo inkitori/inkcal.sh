@@ -14,7 +14,6 @@ interface Props {
   isRenaming?: boolean
   onToggle?: () => void
   onClick?: () => void
-  onDelete?: () => void
   onRenameSubmit?: (text: string) => void
   onRenameCancel?: () => void
   showDue?: boolean
@@ -27,7 +26,7 @@ interface Props {
 
 export default function TaskRow({
   task, isCompleted, isSelected, isOverdue, isRenaming,
-  onToggle, onClick, onDelete, onRenameSubmit, onRenameCancel,
+  onToggle, onClick, onRenameSubmit, onRenameCancel,
   showDue = true, showTime = true,
   hideCheckbox = false, recurrenceLabel, overdueLabel
 }: Props) {
@@ -101,7 +100,7 @@ export default function TaskRow({
         </span>
       )}
       <span
-        className={`font-mono text-[10px] flex items-center gap-2 shrink-0 transition-all duration-150 ${onDelete && !isRenaming ? 'group-hover:mr-8' : ''}`}
+        className="font-mono text-[10px] flex items-center gap-2 shrink-0"
         style={{ color: 'var(--muted)' }}
       >
         {task.kind === 'recurring' && (
@@ -115,21 +114,6 @@ export default function TaskRow({
           <span style={{ color: isOverdue ? 'var(--danger)' : 'var(--accent)' }}>{label}</span>
         )}
       </span>
-      {onDelete && !isRenaming && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 font-mono text-[11px] leading-none rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{
-            background: 'rgba(220,80,80,0.12)',
-            color: 'var(--danger)',
-            border: '1px solid var(--danger)',
-            zIndex: 10
-          }}
-          title="delete"
-        >
-          ×
-        </button>
-      )}
     </div>
   )
 }

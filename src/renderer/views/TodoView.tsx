@@ -227,10 +227,6 @@ export default function TodoView() {
           recurrenceLabel={row.recurrenceLabel}
           overdueLabel={row.overdueLabel}
           onToggle={() => toggle(row.task.id, row.date)}
-          onDelete={() => {
-            deleteTask(row.task.id)
-            setSelected(i => Math.min(i, Math.max(0, rows.length - 2)))
-          }}
           onClick={() => setSelected(idx)}
           onRenameSubmit={(text) => {
             updateTask(row.task.id, { title: text })
