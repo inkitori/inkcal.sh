@@ -12,11 +12,11 @@ function statusLine(s: UpdaterState | null): string {
     case 'up-to-date':
       return `up to date (v${s.currentVersion})`
     case 'available':
-      return `update available: v${s.latestVersion} — downloading…`
+      return `update available: v${s.latestVersion}, downloading…`
     case 'downloading':
       return `downloading v${s.latestVersion ?? ''} ${s.downloadPercent ?? 0}%`
     case 'downloaded':
-      return `v${s.latestVersion} ready — restart to install`
+      return `v${s.latestVersion} ready, restart to install`
     case 'error':
       return `error: ${s.error ?? 'unknown'}`
     default:
@@ -82,7 +82,7 @@ export default function About() {
 
         <div className="px-5 py-4 text-sm space-y-1" style={{ color: 'var(--text)' }}>
           <div>
-            Made with <span style={{ color: 'var(--accent)' }}>♥</span> by {info?.author ?? '—'}
+            Made with <span style={{ color: 'var(--accent)' }}>♥</span> by {info?.author ?? '…'}
           </div>
           <div>
             <button
@@ -90,7 +90,7 @@ export default function About() {
               className="underline cursor-pointer"
               style={{ color: 'var(--accent)' }}
             >
-              {info?.repo?.replace(/^https?:\/\//, '') ?? '—'}
+              {info?.repo?.replace(/^https?:\/\//, '') ?? '…'}
             </button>
           </div>
         </div>

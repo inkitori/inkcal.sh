@@ -34,7 +34,7 @@ export interface Task {
 
 export interface Completion {
   taskId: string
-  /** 'YYYY-MM-DD' — for one-offs we still record the day completed */
+  /** 'YYYY-MM-DD'. for one-offs we still record the day completed */
   date: string
   at: string
 }

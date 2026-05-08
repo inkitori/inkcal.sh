@@ -36,8 +36,6 @@ const WEEKEND_DAYS: Weekday[] = ['sat', 'sun']
 
 const MONTHS_SHORT = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
 
-// — public types —
-
 export interface ParseResult {
   task: Task
   prefix: 'note' | 'recurring' | 'chrono' | 'inbox'
@@ -51,14 +49,12 @@ export interface ScheduleParts {
   endTime?: string
 }
 
-// — public api —
-
 /**
  * Parse a user input into a Task. Order:
  *   1. note: …
  *   2. recurring patterns ("every friday at 10 yoga", "mwf 10-11 lecture", "daily stretch")
  *   3. chrono one-off ("may 6 doctor", "tomorrow at 2pm meeting")
- *   4. inbox (fallback — bare title with no schedule)
+ *   4. inbox (fallback: bare title with no schedule)
  */
 export function parse(input: string): ParseResult | null {
   const trimmed = input.trim()
@@ -72,7 +68,6 @@ export function parse(input: string): ParseResult | null {
     ...overrides
   })
 
-  // note: body
   if (/^note\s*:/i.test(trimmed)) {
     const body = trimmed.replace(/^note\s*:\s*/i, '').trim()
     if (!body) return null
@@ -99,7 +94,7 @@ export function parse(input: string): ParseResult | null {
 }
 
 /**
- * Parse just a schedule (no title required) — used by the Edit modal where
+ * Parse just a schedule (no title required), used by the Edit modal where
  * the title lives in its own field. Empty input → inbox (no schedule).
  */
 export function parseScheduleOnly(input: string): ScheduleParts | null {
@@ -128,7 +123,6 @@ export function taskToInput(task: Task): string {
     const time = recurringTimeInput(r)
     return [days, time, task.title].filter(Boolean).join(' ').trim()
   }
-  // todo
   const date = task.due ? todoDateInput(task.due) : ''
   const time = task.time
     ? (task.endTime ? `${task.time}-${task.endTime}` : task.time)
@@ -210,8 +204,6 @@ export function recurrenceShort(rec: Recurrence | undefined): string {
   return ''
 }
 
-// — recurring parsing —
-
 function tryRecurringWithTitle(input: string): { recurrence: Recurrence; title: string } | null {
   const r = tryRecurring(input, true)
   if (!r || !r.title) return null
@@ -225,26 +217,21 @@ interface RecurringMatch {
 
 function tryRecurring(rawInput: string, requireTitle: boolean): RecurringMatch | null {
   const input = expandTomorrowShortcut(rawInput)
-  // Reject "every other …" (no data-model support for intervals).
+  // "every other" / "every N weeks" aren't supported. the Recurrence model has no interval field.
   if (/^every\s+other\b/i.test(input)) return null
 
-  // 1. daily / every day
   let m = /^(?:every\s+day|daily)\b/i.exec(input)
   if (m) return finishRecurring(input, m[0].length, { daily: true }, requireTitle)
 
-  // 2. weekly → today's weekday
   m = /^weekly\b/i.exec(input)
   if (m) return finishRecurring(input, m[0].length, { days: [weekdayOf(todayISO())] }, requireTitle)
 
-  // 3. every weekday(s) | weekday(s)
   m = /^(?:every\s+weekdays?|weekdays?)\b/i.exec(input)
   if (m) return finishRecurring(input, m[0].length, { days: [...WEEKDAYS_M_F] }, requireTitle)
 
-  // 4. every weekend(s) | weekend(s)
   m = /^(?:every\s+weekends?|weekends?)\b/i.exec(input)
   if (m) return finishRecurring(input, m[0].length, { days: [...WEEKEND_DAYS] }, requireTitle)
 
-  // 5. every <day list> | every <combo>
   m = /^every\s+/i.exec(input)
   if (m) {
     const after = input.slice(m[0].length)
@@ -259,13 +246,11 @@ function tryRecurring(rawInput: string, requireTitle: boolean): RecurringMatch |
     return null
   }
 
-  // 6. plural day list (mondays, mondays and wednesdays, mondays/wednesdays/fridays)
   const list = consumeDayList(input, true)
   if (list && list.days.length > 0) {
     return finishRecurring(input, list.consumed, { days: list.days }, requireTitle)
   }
 
-  // 7. day combo (mwf, mtwrf, etc.) — 2+ chars from [mtwrfsu] only
   const combo = tryCombo(input, false)
   if (combo) {
     return finishRecurring(input, combo.consumed, { days: combo.days }, requireTitle)
@@ -281,7 +266,7 @@ function tryCombo(s: string, allowSingle: boolean): { days: Weekday[]; consumed:
   const m = re.exec(s)
   if (!m) return null
   const word = m[1].toLowerCase()
-  // Don't match if it spells a real day word (e.g. "wed" is Wednesday, not a combo).
+  // "wed" → Wednesday, not the combo wed-d.
   if (DAY_WORD_TO_DAY[word]) return null
   const days: Weekday[] = []
   for (const c of word) {
@@ -307,15 +292,13 @@ function finishRecurring(
     if (tm.start) rec.start = tm.start
     if (tm.end) rec.end = tm.end
   }
-  // Reject backwards same-day ranges
   if (rec.start && rec.end && rec.end <= rec.start) return null
   return { recurrence: rec, title }
 }
 
 function consumeDayList(s: string, requirePlural: boolean): { days: Weekday[]; consumed: number } | null {
-  // Bare path (requirePlural=true): the first word must be plural OR be followed by
-  // an explicit list separator (",", "/", " and "). This disambiguates a recurring
-  // list ("mon, wed, fri") from a one-off ("monday call mom") that chrono should handle.
+  // Plural requirement disambiguates "mon, wed, fri" (recurring list) from
+  // "monday call mom" (one-off that chrono should handle).
   const first = peekDayWord(s, 0)
   if (!first) return null
 
@@ -349,13 +332,12 @@ function peekDayWord(s: string, from: number): { day: Weekday; word: string; len
   return { day, word, length: m[0].length }
 }
 
-// — time parsing —
-
 const TIME_AT_BARE = `(?:noon|midnight|\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m|\\d{1,2})`
+// Bare times must be unambiguous (colon, am/pm, or noon/midnight). a leading
+// `at` lets us accept lone digits like "at 10".
 const TIME_STRICT = `(?:noon|midnight|\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m)`
 
 function consumeTimeFromStart(s: string): { start: string; end?: string; consumed: number } | null {
-  // 1. "at <time> [(- | – | to) <time>]"
   let re = new RegExp(`^at\\s+(${TIME_AT_BARE})(?:\\s*(?:-|–|to)\\s*(${TIME_AT_BARE}))?(?=\\s|$)`, 'i')
   let m = re.exec(s)
   if (m) {
@@ -366,7 +348,6 @@ function consumeTimeFromStart(s: string): { start: string; end?: string; consume
     }
   }
 
-  // 2. "from <time> to <time>"
   re = new RegExp(`^from\\s+(${TIME_AT_BARE})\\s+to\\s+(${TIME_AT_BARE})(?=\\s|$)`, 'i')
   m = re.exec(s)
   if (m) {
@@ -375,7 +356,6 @@ function consumeTimeFromStart(s: string): { start: string; end?: string; consume
     if (start && end) return { start, end, consumed: m[0].length }
   }
 
-  // 3. bare <time>[-<time>] (must have colon or am/pm or noon/midnight)
   re = new RegExp(`^(${TIME_STRICT})(?:\\s*(?:-|–|to)\\s*(${TIME_STRICT}))?(?=\\s|$)`, 'i')
   m = re.exec(s)
   if (m) {
@@ -423,8 +403,6 @@ function pad2(n: number | string): string {
   return String(n).padStart(2, '0')
 }
 
-// — chrono one-off parsing —
-
 interface ChronoMatch {
   due: string
   time?: string
@@ -457,7 +435,7 @@ function tryChrono(input: string, requireTitle: boolean): ChronoMatch | null {
   const results = chrono.parse(expanded, new Date(), { forwardDate: true })
   if (results.length === 0) return null
   const r = results[0]
-  // Need at least a date concept (day/weekday/month/year) — reject time-only matches
+  // Reject time-only matches. chrono returns those, but a one-off needs a date.
   const hasDate =
     r.start.isCertain('day') ||
     r.start.isCertain('weekday') ||
@@ -478,16 +456,14 @@ function toHHMM(d: Date): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
 }
 
-// — taskToInput helpers —
-
 function recurringDayInput(r: Recurrence): string {
   if (r.daily) return 'daily'
   if (!r.days || r.days.length === 0) return ''
   const sorted = [...r.days].sort((a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b))
   if (eqDays(sorted, WEEKDAYS_M_F)) return 'every weekday'
   if (eqDays(sorted, WEEKEND_DAYS)) return 'every weekend'
-  // Single day → plural form ("fridays") so it round-trips as recurring.
-  // The combo form requires 2+ letters, so a single-letter combo wouldn't re-parse.
+  // Plural form for round-tripping: combos need 2+ letters, so a single-letter
+  // combo (e.g. "f") wouldn't re-parse as recurring.
   if (sorted.length === 1) return `${DAY_LONG[sorted[0]]}s`
   return sorted.map(w => COMBO_LETTER[w]).join('')
 }
@@ -511,8 +487,6 @@ function eqDays(a: Weekday[], b: Weekday[]): boolean {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
   return true
 }
-
-// — preview helpers —
 
 function recurrencePreview(r: Recurrence): string {
   const days = r.daily ? 'day' : recurrenceShort(r)

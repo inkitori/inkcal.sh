@@ -38,7 +38,7 @@ note: random thought                  note
 random idea                           bare → inbox (no schedule)
 ```
 
-day combos use single letters: `m t w r f s u` (r = thursday, u = sunday). e.g. `tr` = tue+thu. combos require 2+ letters; a single weekday word (`monday`) parses as a one-off via chrono — use the plural form (`mondays`) or `every monday` to mean recurring.
+day combos use single letters: `m t w r f s u` (r = thursday, u = sunday). e.g. `tr` = tue+thu. combos require 2+ letters; a single weekday word (`monday`) parses as a one-off via chrono. use the plural form (`mondays`) or `every monday` to mean recurring.
 
 time forms accepted: `10:00`, `10:00-11:00`, `at 10`, `at 10am`, `at 10:30pm`, `at noon`, `at midnight`, `from 10 to 11`, `10am-11am`.
 
@@ -163,4 +163,4 @@ needs `gh` logged in. bumps the version, builds, uploads dmg/zip/`latest-mac.yml
 
 installed copies poll `inkitori/inkcal.sh` on launch and every 6h via [electron-updater](https://www.electron.build/auto-update). downloads happen in the background and apply on next quit. ⌘P → `about` shows version + update status, ⌘P → `check for updates` forces it.
 
-builds are unsigned (ad-hoc only) so first launch macOS yells "unidentified developer" — right-click → open → open.
+builds are unsigned (ad-hoc only) so first launch macOS yells "unidentified developer". right-click → open → open.

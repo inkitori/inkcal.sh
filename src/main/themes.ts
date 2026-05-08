@@ -46,7 +46,6 @@ async function readDir(dir: string): Promise<Theme[]> {
 
 export async function loadThemes(): Promise<Theme[]> {
   ensureUserDir()
-  // copy bundled themes into user dir on first run if missing
   const userExisting = (await readDir(userThemesDir())).map(t => t.name)
   const bundled = await readDir(bundledThemesDir())
   for (const t of bundled) {

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* default (dark) theme tokens — overridable per theme */
+/* default (dark) theme tokens, overridable per theme */
 :root {
   --bg:           #111113;
   --bg-2:         #17171a;

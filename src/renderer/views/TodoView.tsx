@@ -89,9 +89,9 @@ export default function TodoView() {
   }, [tasks, completions, today])
 
   const rows: Row[] = useMemo(() => {
-    // OVERDUE: one-off todos with due < today (whether or not completed today —
-    // catch-ups stay sunk in this section for the rest of today) plus recurring
-    // tasks that were missed AND aren't scheduled today.
+    // OVERDUE: one-off todos with due < today (catch-ups completed today stay
+    // sunk in this section for the rest of the day) plus recurring tasks that
+    // were missed AND aren't scheduled today.
     const overdueMerged: Row[] = []
     for (const t of overdue) {
       const completedToday = completions.some(c => c.taskId === t.id && c.date === today)
@@ -237,7 +237,6 @@ export default function TodoView() {
     }
   })
 
-  // Keep the cursor in view as the user navigates with j/k/gg/G.
   useLayoutEffect(() => {
     scrollSelectedInto(scrollRef.current, 'nearest')
   }, [safeIdx, rows.length])
@@ -245,7 +244,7 @@ export default function TodoView() {
   if (rows.length === 0) {
     return (
       <div className="p-12 text-center font-mono text-[12px] uppercase" style={{ color: 'var(--muted-2)' }}>
-        nothing to do — press ⌘K to capture
+        nothing to do. press ⌘K to capture
       </div>
     )
   }
@@ -322,8 +321,6 @@ export default function TodoView() {
   )
 }
 
-// Find the currently selected row (by data-selected="true") inside the scroll
-// container and align it within the viewport.
 export function scrollSelectedInto(container: HTMLElement | null, block: ScrollLogicalPosition) {
   if (!container) return
   const el = container.querySelector<HTMLElement>('[data-selected="true"]')
@@ -331,8 +328,7 @@ export function scrollSelectedInto(container: HTMLElement | null, block: ScrollL
   el.scrollIntoView({ block, inline: 'nearest' })
 }
 
-// Approx half a viewport in row-units, using the selected row's height as a
-// proxy. Falls back to 10 if no row is rendered yet.
+// Half-viewport in row-units, using the selected row's height as a proxy.
 export function halfPageStep(container: HTMLElement | null): number {
   if (!container) return 10
   const el = container.querySelector<HTMLElement>('[data-selected="true"]')

@@ -20,7 +20,6 @@ interface State {
   completions: Completion[]
   settings: Settings
 
-  /** ephemeral UI state */
   paletteOpen: boolean
   captureOpen: boolean
   capturePrefill: string
@@ -35,12 +34,10 @@ interface State {
   pendingSelectId: string | null
   undoStack: UndoEntry[]
 
-  /** init/persistence */
   init: () => Promise<void>
   flushSoon: () => void
   saveNow: () => Promise<void>
 
-  /** view */
   setView: (v: ViewName) => void
   openPalette: () => void
   closePalette: () => void
@@ -61,7 +58,6 @@ interface State {
   setFocusedPane: (p: 'primary' | 'secondary') => void
   setPendingSelectId: (id: string | null) => void
 
-  /** mutations */
   addTask: (t: Task) => void
   updateTask: (id: string, patch: Partial<Task>) => void
   deleteTask: (id: string) => void
@@ -69,7 +65,6 @@ interface State {
   restoreUndo: () => void
   clearUndo: () => void
 
-  /** settings */
   setSettings: (patch: Partial<Settings>) => Promise<void>
 }
 

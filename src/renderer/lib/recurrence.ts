@@ -18,7 +18,6 @@ export interface OverdueRecurring {
 export function matches(task: Task, dateISO: string): boolean {
   if (task.kind !== 'recurring' || !task.recurrence) return false
   const r = task.recurrence
-  // days takes precedence per the type doc
   if (r.days?.length) {
     const wd = weekdayOf(dateISO)
     return r.days.includes(wd)
@@ -41,7 +40,6 @@ export function instancesForDate(
       out.push({ task: t, date: dateISO, isCompleted: completedSet.has(t.id) })
     }
   }
-  // stable sort by start time, undefined times last
   out.sort((a, b) => {
     const at = a.task.recurrence?.start ?? '99:99'
     const bt = b.task.recurrence?.start ?? '99:99'
@@ -71,7 +69,7 @@ export function lastExpectedOccurrence(task: Task, todayISO: string): string | n
 /**
  * Returns one entry per recurring task whose most recent expected occurrence
  * was missed, today is NOT a scheduled day, and the task hasn't been completed
- * today. Tasks scheduled for today never appear here — they go through
+ * today. Tasks scheduled for today never appear here; they go through
  * `selectMissedScheduledToday` instead so the row can sit in today's section
  * with a "missed last X" chip.
  */

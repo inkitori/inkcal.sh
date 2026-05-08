@@ -91,7 +91,7 @@ export default function NotesView() {
   if (notes.length === 0) {
     return (
       <div className="p-12 text-center font-mono text-[12px] uppercase" style={{ color: 'var(--muted-2)' }}>
-        no notes — press n or ⌘K then "note: ..."
+        no notes. press n or ⌘K then "note: ..."
       </div>
     )
   }

@@ -10,7 +10,7 @@ interface Props {
   className?: string
   inputClassName?: string
   inputStyle?: React.CSSProperties
-  /** override the live-preview function — defaults to parser.previewFor */
+  /** override the live-preview function. defaults to parser.previewFor */
   preview?: (raw: string) => string
 }
 

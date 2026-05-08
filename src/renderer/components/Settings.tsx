@@ -209,7 +209,6 @@ function HotkeyField({ label, value, onChange }: {
       if (e.shiftKey) parts.push('Shift')
       const k = e.key
       if (k === 'Meta' || k === 'Control' || k === 'Alt' || k === 'Shift') return
-      // Format key: 'a' -> 'A', ' ' -> 'Space', etc.
       let keyName: string
       if (k === ' ') keyName = 'Space'
       else if (k.length === 1) keyName = k.toUpperCase()

@@ -92,7 +92,6 @@ export function registerIpc() {
     return true
   })
 
-  // theme dir watcher → notify renderer when files change
   watchThemes(async () => {
     const themes = await loadThemes()
     getWindow()?.webContents.send('themes:changed', themes)

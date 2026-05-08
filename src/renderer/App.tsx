@@ -72,13 +72,12 @@ export default function App() {
     return () => { unsub?.() }
   }, [reloadThemes, settings.activeTheme])
 
-  // re-register the global hotkey if user changed it
   useEffect(() => {
     if (!ready) return
     window.inkcal.registerShortcut(settings.globalHotkey)
   }, [ready, settings.globalHotkey])
 
-  // chromium swallows cmd+p (print) before the renderer keymap sees it; main forwards via ipc
+  // chromium swallows cmd+p (print) before the renderer keymap sees it; main forwards via ipc.
   useEffect(() => {
     const unsub = window.inkcal.onOpenPalette(() => useStore.getState().openPalette())
     return () => { unsub() }

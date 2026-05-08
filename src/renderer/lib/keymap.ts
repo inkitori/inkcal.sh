@@ -14,13 +14,13 @@ interface ListKeyHandlers {
   onLeft?: () => void
   onRight?: () => void
   onEscape?: () => void
-  /** zz / zt / zb — reposition the selected row in the scroll viewport. */
+  /** zz / zt / zb: reposition the selected row in the scroll viewport. */
   onCenterView?: () => void
   onTopView?: () => void
   onBottomView?: () => void
   onHalfPageDown?: () => void
   onHalfPageUp?: () => void
-  /** `f` — focus / fullscreen the selected item. */
+  /** `f`: focus / fullscreen the selected item. */
   onFocusKey?: () => void
 }
 
@@ -62,7 +62,7 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
       const k = e.key
 
       // ctrl-d / ctrl-u: half-page jumps. Allowed despite ctrl since they're
-      // a vim convention — the rest of the keymap stays meta-free.
+      // a vim convention. The rest of the keymap stays meta-free.
       if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         if (k === 'd') { e.preventDefault(); handlers.onHalfPageDown?.(); return }
         if (k === 'u') { e.preventDefault(); handlers.onHalfPageUp?.(); return }
@@ -123,7 +123,6 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
   }, [handlers, paletteOpen, captureOpen, editOpen, searchOpen, settingsOpen, noteFocusId, paneActive])
 }
 
-/** Global keymap for app-level shortcuts: cmd+1/2/3, cmd+k, cmd+p */
 export function useGlobalKeymap(): void {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

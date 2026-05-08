@@ -92,7 +92,6 @@ export async function importFrom(sourcePath: string): Promise<AppData> {
   const raw = await fs.readFile(sourcePath, 'utf8')
   const parsed = JSON.parse(raw) as AppData
   if (typeof parsed.version !== 'number') throw new Error('invalid data file')
-  // backup current first
   if (existsSync(dataFile())) {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     copyFileSync(dataFile(), join(backupsDir(), `before-import-${stamp}.json`))

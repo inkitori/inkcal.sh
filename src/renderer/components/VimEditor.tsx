@@ -95,11 +95,10 @@ export default function VimEditor({
       EditorView.lineWrapping,
       // Skip commit when:
       //  (a) focus is moving to a sibling inside the same editor (vim's search
-      //      panel, e.g. when pressing `/`) — otherwise we'd unmount before
+      //      panel, e.g. when pressing `/`). otherwise we'd unmount before
       //      vim opens its panel.
-      //  (b) the whole window has lost focus (alt-tab, cmd-tab) — we don't
-      //      want to drop the user out of focus mode just because they
-      //      switched apps. They'll come back to where they left off.
+      //  (b) the whole window has lost focus (alt-tab, cmd-tab). we don't want
+      //      to kick the user out of focus mode for an app switch.
       EditorView.domEventHandlers({
         blur: (e: FocusEvent) => {
           const next = e.relatedTarget as HTMLElement | null
@@ -160,7 +159,7 @@ export default function VimEditor({
   // Capture-phase keydown so we see Esc *before* vim handles it. With vim:
   // first Esc returns to normal, second Esc commits. Without vim: Esc commits
   // immediately. Also intercepts `zt`/`zz`/`zb` in vim normal mode and scrolls
-  // the cursor element into view via the nearest scrollable ancestor — vim's
+  // the cursor element into view via the nearest scrollable ancestor. vim's
   // own viewport scroll targets `.cm-scroller`, which doesn't actually scroll
   // for our short-content editors.
   useEffect(() => {
@@ -216,7 +215,7 @@ export default function VimEditor({
 // Mirror vim's unnamed register (`"`) through the OS clipboard so that y/d/c
 // yanks can be pasted into other apps and `p` can paste from them. The
 // registerController is a singleton on the vim global state, so this only
-// needs to run once per process — but re-running is idempotent.
+// needs to run once per process. Re-running is idempotent.
 let bridged = false
 function bridgeUnnamedRegisterToClipboard() {
   if (bridged) return
