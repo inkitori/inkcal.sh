@@ -10,6 +10,10 @@ fix by running (i'll fix this once i can pay for a key lol):
 xattr -cr /Applications/inkcal.app
 ```
 
+## Code signing error on auto-update
+
+the application got renamed to inkcal.app so just redownload from releases and delete the old inkcal.sh.app
+
 
 ## capture syntax (⌘K)
 
