@@ -2,8 +2,6 @@
 
 calm vim notetaking
 
-made this because i couldn't find any other productivity app (except obsidian) that felt good to use
-
 ## screenshots
 
 ### todos
