@@ -3,7 +3,8 @@ import { useStore, selectArchived, lastCompletionDate } from '@/lib/store'
 import { diffDays, todayISO } from '@/lib/date'
 import Section from '@/components/Section'
 import TaskRow from '@/components/TaskRow'
-import { isInTextInput } from '@/lib/keymap'
+import { useListKeymap } from '@/lib/keymap'
+import { halfPageStep, scrollSelectedInto } from '@/lib/scroll'
 import type { Task } from '@/../shared/types'
 
 type ArchiveSection = 'completed' | 'deleted'
@@ -22,9 +23,6 @@ function describeAge(prefix: string, dateISO: string, today: string): string {
   if (days < 30) return `${prefix} ${days}d ago`
   return `${prefix} ${d}`
 }
-
-let lastD = 0
-let lastG = 0
 
 export default function Archive() {
   const open = useStore(s => s.archiveOpen)
@@ -87,142 +85,80 @@ export default function Archive() {
     else restore(row.task.id)
   }
 
-  // useListKeymap is gated on archiveOpen, so the modal handles its own keys.
-  useEffect(() => {
-    if (!open) return
-    function onKey(e: KeyboardEvent) {
-      if (renamingId) return
-      if (isInTextInput(e.target)) return
-      if (e.metaKey || e.altKey) return
-      const k = e.key
-
-      if (e.ctrlKey && !e.shiftKey) {
-        if (k === 'd') {
-          e.preventDefault()
-          if (rows.length === 0) return
-          const step = halfStep(scrollRef.current)
-          setSelected(prev => Math.min(rows.length - 1, prev + step))
-          return
-        }
-        if (k === 'u') {
-          e.preventDefault()
-          if (rows.length === 0) return
-          const step = halfStep(scrollRef.current)
-          setSelected(prev => Math.max(0, prev - step))
-          return
-        }
-        return
-      }
-      if (e.ctrlKey) return
-
-      if (k === 'Escape') { e.preventDefault(); close(); return }
-      if (k === 'j' || k === 'ArrowDown') {
-        e.preventDefault()
-        if (!rows.length) return
-        setSelected(p => Math.min(rows.length - 1, p + 1))
-        return
-      }
-      if (k === 'k' || k === 'ArrowUp') {
-        e.preventDefault()
-        if (!rows.length) return
-        setSelected(p => Math.max(0, p - 1))
-        return
-      }
-      if (k === 'G') { e.preventDefault(); setSelected(Math.max(0, rows.length - 1)); return }
-      if (k === 'g') {
-        e.preventDefault()
-        const now = Date.now()
-        if (now - lastG < 400) {
-          setSelected(0)
-          lastG = 0
-        } else {
-          lastG = now
-        }
-        return
-      }
-      if (k === ' ' || k === 'x') {
-        e.preventDefault()
-        const r = rows[safeIdx]
-        if (r) actToggle(r)
-        return
-      }
-      if (k === 'e') {
-        e.preventDefault()
-        const r = rows[safeIdx]
-        if (r) openEdit(r.task.id)
-        return
-      }
-      if (k === 'i') {
-        e.preventDefault()
-        const r = rows[safeIdx]
-        if (r) setRenamingId(r.task.id)
-        return
-      }
-      if (k === 'd') {
-        e.preventDefault()
-        const now = Date.now()
-        if (now - lastD < 400) {
-          const r = rows[safeIdx]
-          if (r) {
-            permanentlyDelete(r.task.id)
-            setSelected(idx => Math.min(idx, Math.max(0, rows.length - 2)))
-          }
-          lastD = 0
-        } else {
-          lastD = now
-        }
-        return
-      }
-      if (k === 'Backspace' || k === 'Delete') {
-        e.preventDefault()
-        const r = rows[safeIdx]
-        if (r) {
-          permanentlyDelete(r.task.id)
-          setSelected(idx => Math.min(idx, Math.max(0, rows.length - 2)))
-        }
-      }
+  useListKeymap({
+    enabled: open,
+    inModal: 'archive',
+    onMove: (delta) => {
+      if (!rows.length) return
+      setSelected(prev => Math.max(0, Math.min(rows.length - 1, prev + delta)))
+    },
+    onTop: () => setSelected(0),
+    onBottom: () => setSelected(Math.max(0, rows.length - 1)),
+    onToggle: () => {
+      const r = rows[safeIdx]
+      if (r) actToggle(r)
+    },
+    onEdit: () => {
+      const r = rows[safeIdx]
+      if (r) openEdit(r.task.id)
+    },
+    onRename: () => {
+      const r = rows[safeIdx]
+      if (r) setRenamingId(r.task.id)
+    },
+    onDelete: () => {
+      const r = rows[safeIdx]
+      if (!r) return
+      permanentlyDelete(r.task.id)
+      setSelected(idx => Math.min(idx, Math.max(0, rows.length - 2)))
+    },
+    onEscape: close,
+    onCenterView: () => scrollSelectedInto(scrollRef.current, 'center'),
+    onTopView: () => scrollSelectedInto(scrollRef.current, 'start'),
+    onBottomView: () => scrollSelectedInto(scrollRef.current, 'end'),
+    onHalfPageDown: () => {
+      if (!rows.length) return
+      const step = halfPageStep(scrollRef.current)
+      setSelected(prev => Math.min(rows.length - 1, prev + step))
+    },
+    onHalfPageUp: () => {
+      if (!rows.length) return
+      const step = halfPageStep(scrollRef.current)
+      setSelected(prev => Math.max(0, prev - step))
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, rows, safeIdx, renamingId, close, openEdit, permanentlyDelete, restore, uncomplete])
+  })
 
   useLayoutEffect(() => {
     if (!open) return
-    const el = scrollRef.current?.querySelector<HTMLElement>('[data-selected="true"]')
-    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    scrollSelectedInto(scrollRef.current, 'nearest')
   }, [safeIdx, rows.length, open])
 
   if (!open) return null
 
-  let cursor = 0
-  const renderRows = (slice: Row[]) =>
-    slice.map((row, i) => {
-      const idx = cursor + i
-      return (
-        <TaskRow
-          key={`${row.task.id}-${idx}`}
-          task={row.task}
-          date={today}
-          isCompleted={row.section === 'completed'}
-          isSelected={idx === safeIdx}
-          isRenaming={row.task.id === renamingId}
-          showDue={false}
-          showTime={false}
-          hideCheckbox={row.section === 'deleted'}
-          recurrenceLabel={row.label}
-          onToggle={() => actToggle(row)}
-          onClick={() => setSelected(idx)}
-          onRenameSubmit={(text) => {
-            updateTask(row.task.id, { title: text })
-            setRenamingId(null)
-          }}
-          onRenameCancel={() => setRenamingId(null)}
-        />
-      )
-    })
+  const renderRow = (row: Row, idx: number) => (
+    <TaskRow
+      key={`${row.task.id}-${idx}`}
+      task={row.task}
+      isCompleted={row.section === 'completed'}
+      isSelected={idx === safeIdx}
+      isRenaming={row.task.id === renamingId}
+      showTime={false}
+      hideCheckbox={row.section === 'deleted'}
+      chips={[{ text: row.label, tone: 'muted' }]}
+      onToggle={() => actToggle(row)}
+      onClick={() => setSelected(idx)}
+      onRenameSubmit={(text) => {
+        updateTask(row.task.id, { title: text })
+        setRenamingId(null)
+      }}
+      onRenameCancel={() => setRenamingId(null)}
+    />
+  )
 
-  const completedRows = rows.filter(r => r.section === 'completed')
-  const deletedRows = rows.filter(r => r.section === 'deleted')
+  const sections: { key: ArchiveSection; title: string; tone?: 'danger' }[] = [
+    { key: 'completed', title: 'completed' },
+    { key: 'deleted', title: 'deleted', tone: 'danger' }
+  ]
 
   return (
     <div
@@ -254,18 +190,16 @@ export default function Archive() {
               archive is empty
             </div>
           ) : (
-            <>
-              {completedRows.length > 0 && (
-                <Section title="completed" count={completedRows.length}>
-                  {(() => { const out = renderRows(completedRows); cursor += completedRows.length; return out })()}
+            sections.map(s => {
+              const start = rows.findIndex(r => r.section === s.key)
+              if (start < 0) return null
+              const slice = rows.filter(r => r.section === s.key)
+              return (
+                <Section key={s.key} title={s.title} count={slice.length} tone={s.tone}>
+                  {slice.map((row, i) => renderRow(row, start + i))}
                 </Section>
-              )}
-              {deletedRows.length > 0 && (
-                <Section title="deleted" count={deletedRows.length} tone="danger">
-                  {(() => { const out = renderRows(deletedRows); cursor += deletedRows.length; return out })()}
-                </Section>
-              )}
-            </>
+              )
+            })
           )}
         </div>
         <div
@@ -279,12 +213,4 @@ export default function Archive() {
       </div>
     </div>
   )
-}
-
-function halfStep(container: HTMLElement | null): number {
-  if (!container) return 10
-  const el = container.querySelector<HTMLElement>('[data-selected="true"]')
-  const rowH = el?.getBoundingClientRect().height
-  if (!rowH || rowH <= 0) return 10
-  return Math.max(1, Math.round((container.clientHeight / rowH) / 2))
 }

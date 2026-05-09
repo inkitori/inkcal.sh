@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { selectNotes, useStore } from '@/lib/store'
 import { useListKeymap } from '@/lib/keymap'
 import VimEditor, { type VimMode } from '@/components/VimEditor'
-import { halfPageStep, scrollSelectedInto } from './TodoView'
+import { halfPageStep, scrollSelectedInto } from '@/lib/scroll'
 
 const COLLAPSED_MAX_PX = 200
 

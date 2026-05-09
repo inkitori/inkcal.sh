@@ -11,25 +11,20 @@ import { nextRecurringSlot } from '@/../shared/recurrence'
 import { dueLabel, overdueLabel as fmtOverdueLabel, todayISO } from '@/lib/date'
 import { recurrenceShort } from '@/lib/parser'
 import Section from '@/components/Section'
-import TaskRow from '@/components/TaskRow'
+import TaskRow, { type Chip } from '@/components/TaskRow'
 import { useListKeymap } from '@/lib/keymap'
+import { halfPageStep, scrollSelectedInto } from '@/lib/scroll'
 import type { Task } from '@/../shared/types'
 
 type RowSection = 'overdue' | 'today' | 'upcoming' | 'inbox'
 
 interface Row {
   task: Task
-  date: string
   isCompleted: boolean
   section: RowSection
-  isOverdue?: boolean
-  /** danger-tone label shown in overdue section (e.g. "missed Mon") */
-  overdueLabel?: string
-  /** sortable date used inside overdue (missed-date for recurring, due for todos) */
-  overdueSortDate?: string
-  showDue?: boolean
-  /** muted right-side chip: recurrence rule today, or "in 3d" / weekday for upcoming recurrings */
-  recurrenceLabel?: string
+  chips: Chip[]
+  /** sort key used within a section (date for overdue/upcoming, time for today) */
+  sortKey?: string
 }
 
 function sinkCompleted(rs: Row[]): Row[] {
@@ -58,91 +53,79 @@ export default function TodoView() {
   const recurringTasks = useMemo(() => selectRecurring(tasks), [tasks])
 
   const rows: Row[] = useMemo(() => {
-    // selectOverdueTodos already excludes completed; rows are always uncompleted.
     const overdueTodoRows: Row[] = overdue.map(t => ({
-      task: t, date: today, isCompleted: false,
-      section: 'overdue', isOverdue: true, showDue: true,
-      overdueSortDate: t.due ?? today
+      task: t, isCompleted: false, section: 'overdue',
+      chips: [{ text: dueLabel(t.due!) ?? t.due!, tone: 'danger' }],
+      sortKey: t.due ?? today
     }))
 
-    // RECURRING: each task resolves to exactly one slot.
     const recurringRows: Row[] = []
     for (const t of recurringTasks) {
       const slot = nextRecurringSlot(t, completions, today)
       if (!slot) continue
-      if (slot.state === 'overdue') {
+      const ruleChip: Chip = { text: recurrenceShort(t.recurrence), tone: 'muted' }
+
+      if (slot.state === 'overdue' || slot.state === 'overdue-completed') {
         recurringRows.push({
-          task: t, date: today, isCompleted: false,
-          section: 'overdue', isOverdue: true, showDue: false,
-          overdueLabel: fmtOverdueLabel(slot.date, today, slot.lastCompleted),
-          overdueSortDate: slot.date
+          task: t,
+          isCompleted: slot.state === 'overdue-completed',
+          section: 'overdue',
+          chips: [ruleChip, { text: fmtOverdueLabel(slot.date, today, slot.lastCompleted), tone: 'danger' }],
+          sortKey: slot.date
         })
-      } else if (slot.state === 'overdue-completed') {
+      } else if (slot.state === 'today' || slot.state === 'completed-today') {
         recurringRows.push({
-          task: t, date: today, isCompleted: true,
-          section: 'overdue', isOverdue: true, showDue: false,
-          overdueLabel: fmtOverdueLabel(slot.date, today, slot.lastCompleted),
-          overdueSortDate: slot.date
-        })
-      } else if (slot.state === 'today') {
-        recurringRows.push({
-          task: t, date: today, isCompleted: false,
-          section: 'today', showDue: false,
-          recurrenceLabel: recurrenceShort(t.recurrence)
-        })
-      } else if (slot.state === 'completed-today') {
-        recurringRows.push({
-          task: t, date: today, isCompleted: true,
-          section: 'today', showDue: false,
-          recurrenceLabel: recurrenceShort(t.recurrence)
+          task: t,
+          isCompleted: slot.state === 'completed-today',
+          section: 'today',
+          chips: [ruleChip],
+          sortKey: t.recurrence?.start ?? '99:99'
         })
       } else {
         recurringRows.push({
-          task: t, date: today, isCompleted: false,
-          section: 'upcoming', showDue: false,
-          recurrenceLabel: dueLabel(slot.date) ?? slot.date
+          task: t, isCompleted: false, section: 'upcoming',
+          chips: [ruleChip, { text: dueLabel(slot.date) ?? slot.date, tone: 'accent' }],
+          sortKey: slot.date
         })
       }
     }
 
+    const byKeyThenTitle = (a: Row, b: Row) => {
+      const c = (a.sortKey ?? '').localeCompare(b.sortKey ?? '')
+      if (c !== 0) return c
+      return (a.task.title ?? '').localeCompare(b.task.title ?? '')
+    }
+
     const overdueRows = sinkCompleted(
-      [...overdueTodoRows, ...recurringRows.filter(r => r.section === 'overdue')]
-        .sort((a, b) => {
-          const c = (a.overdueSortDate ?? '').localeCompare(b.overdueSortDate ?? '')
-          if (c !== 0) return c
-          return (a.task.title ?? '').localeCompare(b.task.title ?? '')
-        })
+      [...overdueTodoRows, ...recurringRows.filter(r => r.section === 'overdue')].sort(byKeyThenTitle)
     )
 
-    // row.date is today so toggle always records completion under today,
-    // regardless of which section the task lived in.
     const todayTodoRows: Row[] = todayTodos.map(t => ({
-      task: t, date: today, isCompleted: false,
-      section: 'today', showDue: false
+      task: t, isCompleted: false, section: 'today',
+      chips: [],
+      sortKey: t.time ?? '99:99'
     }))
 
-    const todayRows = sinkCompleted([
-      ...recurringRows.filter(r => r.section === 'today'),
-      ...todayTodoRows
-    ])
+    const todayRows = sinkCompleted(
+      [...recurringRows.filter(r => r.section === 'today'), ...todayTodoRows].sort(byKeyThenTitle)
+    )
 
     const upcomingTodoRows: Row[] = upcoming.map(t => ({
-      task: t, date: today, isCompleted: false,
-      section: 'upcoming', showDue: true
+      task: t, isCompleted: false, section: 'upcoming',
+      chips: [{ text: dueLabel(t.due!) ?? t.due!, tone: 'accent' }],
+      sortKey: t.due ?? undefined
     }))
 
-    const upcomingRows = sinkCompleted([
-      ...recurringRows.filter(r => r.section === 'upcoming'),
-      ...upcomingTodoRows
-    ])
+    const upcomingRows = sinkCompleted(
+      [...recurringRows.filter(r => r.section === 'upcoming'), ...upcomingTodoRows].sort(byKeyThenTitle)
+    )
 
     const inboxRows: Row[] = inbox.map(t => ({
-      task: t, date: today, isCompleted: false,
-      section: 'inbox', showDue: false
+      task: t, isCompleted: false, section: 'inbox', chips: []
     }))
 
     return [...overdueRows, ...todayRows, ...upcomingRows, ...inboxRows]
-  }, [overdue, recurringTasks, todayTodos, upcoming, inbox, completions, today])
+  }, [overdue, recurringTasks, todayTodos, upcoming, inbox, today])
 
   const safeIdx = Math.min(selected, Math.max(0, rows.length - 1))
 
@@ -165,7 +148,7 @@ export default function TodoView() {
     onToggle: () => {
       const row = rows[safeIdx]
       if (!row) return
-      toggle(row.task.id, row.date)
+      toggle(row.task.id, today)
     },
     onDelete: () => {
       const row = rows[safeIdx]
@@ -209,79 +192,47 @@ export default function TodoView() {
     )
   }
 
-  let cursor = 0
-  const renderRows = (slice: Row[]) =>
-    slice.map((row, i) => {
-      const idx = cursor + i
-      return (
-        <TaskRow
-          key={`${row.task.id}-${row.date}-${idx}`}
-          task={row.task}
-          date={row.date}
-          isCompleted={row.isCompleted}
-          isOverdue={row.isOverdue}
-          isSelected={idx === safeIdx}
-          isRenaming={row.task.id === renamingId}
-          showDue={row.showDue}
-          showTime
-          recurrenceLabel={row.recurrenceLabel}
-          overdueLabel={row.overdueLabel}
-          onToggle={() => toggle(row.task.id, row.date)}
-          onClick={() => setSelected(idx)}
-          onRenameSubmit={(text) => {
-            updateTask(row.task.id, { title: text })
-            setRenamingId(null)
-          }}
-          onRenameCancel={() => setRenamingId(null)}
-        />
-      )
-    })
+  const renderRow = (row: Row, idx: number) => (
+    <TaskRow
+      key={`${row.task.id}-${idx}`}
+      task={row.task}
+      isCompleted={row.isCompleted}
+      isSelected={idx === safeIdx}
+      isRenaming={row.task.id === renamingId}
+      showTime
+      chips={row.chips}
+      onToggle={() => toggle(row.task.id, today)}
+      onClick={() => setSelected(idx)}
+      onRenameSubmit={(text) => {
+        updateTask(row.task.id, { title: text })
+        setRenamingId(null)
+      }}
+      onRenameCancel={() => setRenamingId(null)}
+    />
+  )
 
-  const overdueRows = rows.filter(r => r.section === 'overdue')
-  const todayRows = rows.filter(r => r.section === 'today')
-  const upcomingRows = rows.filter(r => r.section === 'upcoming')
-  const inboxRows = rows.filter(r => r.section === 'inbox')
+  const sections: { key: RowSection; title: string; tone?: 'danger' | 'accent' }[] = [
+    { key: 'overdue', title: 'overdue', tone: 'danger' },
+    { key: 'today', title: 'today', tone: 'accent' },
+    { key: 'upcoming', title: 'upcoming' },
+    { key: 'inbox', title: 'inbox' }
+  ]
 
   return (
     <div ref={scrollRef} className="h-full overflow-y-auto">
       <div className="px-6 py-5 max-w-[760px] mx-auto fade-in">
-      {overdueRows.length > 0 && (
-        <Section title="overdue" count={overdueRows.length} tone="danger">
-          {(() => { const out = renderRows(overdueRows); cursor += overdueRows.length; return out })()}
-        </Section>
-      )}
-      {todayRows.length > 0 && (
-        <Section title="today" count={todayRows.length} tone="accent">
-          {(() => { const out = renderRows(todayRows); cursor += todayRows.length; return out })()}
-        </Section>
-      )}
-      {upcomingRows.length > 0 && (
-        <Section title="upcoming" count={upcomingRows.length}>
-          {(() => { const out = renderRows(upcomingRows); cursor += upcomingRows.length; return out })()}
-        </Section>
-      )}
-      {inboxRows.length > 0 && (
-        <Section title="inbox" count={inboxRows.length}>
-          {(() => { const out = renderRows(inboxRows); cursor += inboxRows.length; return out })()}
-        </Section>
-      )}
+        {sections.map(s => {
+          const start = rows.findIndex(r => r.section === s.key)
+          if (start < 0) return null
+          const slice = rows.filter(r => r.section === s.key)
+          return (
+            <Section key={s.key} title={s.title} count={slice.length} tone={s.tone}>
+              {slice.map((row, i) => renderRow(row, start + i))}
+            </Section>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-export function scrollSelectedInto(container: HTMLElement | null, block: ScrollLogicalPosition) {
-  if (!container) return
-  const el = container.querySelector<HTMLElement>('[data-selected="true"]')
-  if (!el) return
-  el.scrollIntoView({ block, inline: 'nearest' })
-}
-
-// Half-viewport in row-units, using the selected row's height as a proxy.
-export function halfPageStep(container: HTMLElement | null): number {
-  if (!container) return 10
-  const el = container.querySelector<HTMLElement>('[data-selected="true"]')
-  const rowH = el?.getBoundingClientRect().height
-  if (!rowH || rowH <= 0) return 10
-  return Math.max(1, Math.round((container.clientHeight / rowH) / 2))
-}

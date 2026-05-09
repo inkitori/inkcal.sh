@@ -1,34 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
 import Checkbox from './Checkbox'
-import { dueLabel } from '@/lib/date'
 import { formatTimeRange } from '@/../shared/time'
 import { useStore } from '@/lib/store'
 import type { Task } from '@/../shared/types'
 
+export type ChipTone = 'muted' | 'accent' | 'danger'
+export interface Chip { text: string; tone: ChipTone }
+
+const CHIP_COLORS: Record<ChipTone, string> = {
+  muted: 'var(--muted-2)',
+  accent: 'var(--accent)',
+  danger: 'var(--danger)'
+}
+
 interface Props {
   task: Task
-  date: string  // for recurring instances; for todos this is just 'today' or due date
   isCompleted: boolean
   isSelected?: boolean
-  isOverdue?: boolean
   isRenaming?: boolean
   onToggle?: () => void
   onClick?: () => void
   onRenameSubmit?: (text: string) => void
   onRenameCancel?: () => void
-  showDue?: boolean
   showTime?: boolean
   hideCheckbox?: boolean
-  recurrenceLabel?: string
-  /** danger-tone label for missed recurring rows; replaces the dueLabel */
-  overdueLabel?: string
+  chips?: Chip[]
 }
 
 export default function TaskRow({
-  task, isCompleted, isSelected, isOverdue, isRenaming,
+  task, isCompleted, isSelected, isRenaming,
   onToggle, onClick, onRenameSubmit, onRenameCancel,
-  showDue = true, showTime = true,
-  hideCheckbox = false, recurrenceLabel, overdueLabel
+  showTime = true, hideCheckbox = false, chips
 }: Props) {
   const titleStyle: React.CSSProperties = {
     color: isCompleted ? 'var(--muted)' : 'var(--text)',
@@ -40,8 +42,6 @@ export default function TaskRow({
   const time = task.time ?? task.recurrence?.start
   const endTime = task.endTime ?? task.recurrence?.end
   const timeLabel = time ? formatTimeRange(time, endTime, clockFormat) : undefined
-  const due = task.due
-  const label = showDue && due ? dueLabel(due) : null
 
   const initial = task.title || task.body || ''
   const [draft, setDraft] = useState(initial)
@@ -107,12 +107,9 @@ export default function TaskRow({
           <span style={{ color: 'var(--accent)', fontSize: 13, lineHeight: 1 }} title="recurring">↻</span>
         )}
         {showTime && time && <span>@{timeLabel}</span>}
-        {recurrenceLabel && !overdueLabel && <span style={{ color: 'var(--muted-2)' }}>{recurrenceLabel}</span>}
-        {overdueLabel ? (
-          <span style={{ color: 'var(--danger)' }}>{overdueLabel}</span>
-        ) : label && (
-          <span style={{ color: isOverdue ? 'var(--danger)' : 'var(--accent)' }}>{label}</span>
-        )}
+        {chips?.map((c, i) => (
+          <span key={i} style={{ color: CHIP_COLORS[c.tone] }}>{c.text}</span>
+        ))}
       </span>
     </div>
   )

@@ -22,6 +22,10 @@ interface ListKeyHandlers {
   onHalfPageUp?: () => void
   /** `f`: focus / fullscreen the selected item. */
   onFocusKey?: () => void
+  /** When false, the keymap is disabled. Defaults to true. */
+  enabled?: boolean
+  /** Set to 'archive' so the keymap stays active while the archive modal is open. */
+  inModal?: 'archive'
 }
 
 let lastG = 0
@@ -56,8 +60,10 @@ export function useListKeymap(handlers: ListKeyHandlers): void {
   const paneActive = usePaneActive()
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (handlers.enabled === false) return
       if (!paneActive) return
-      if (paletteOpen || captureOpen || editOpen || searchOpen || archiveOpen || settingsOpen || noteFocusId) return
+      const archiveSuppressed = archiveOpen && handlers.inModal !== 'archive'
+      if (paletteOpen || captureOpen || editOpen || searchOpen || archiveSuppressed || settingsOpen || noteFocusId) return
       if (isInTextInput(e.target)) return
 
       const k = e.key
